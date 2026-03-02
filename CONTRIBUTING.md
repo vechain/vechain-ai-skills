@@ -5,8 +5,8 @@ We welcome contributions! This guide covers development setup, the repo architec
 ## Development Setup
 
 ```bash
-git clone https://github.com/vechain/vechain-dev-skill
-cd vechain-dev-skill
+git clone https://github.com/vechain/vechain-ai
+cd vechain-ai
 npm install
 npx nx run vechain-dev:validate       # Validate plugin structure
 npx nx run vechain-dev:lint-markdown   # Lint markdown files
@@ -51,8 +51,8 @@ This repo supports three ways users can install plugins. All must stay in sync:
 
 | Channel | Command | What it does |
 |---------|---------|-------------|
-| **Plugin marketplace** | `/plugin marketplace add vechain/vechain-dev-skill` | Claude Code reads `.claude-plugin/marketplace.json`, then `/plugin install <name>` installs individual plugins |
-| **Skills CLI** | `npx skills add vechain/vechain-dev-skill` | Agent-agnostic CLI finds `SKILL.md` files and installs them into any supported coding agent |
+| **Plugin marketplace** | `/plugin marketplace add vechain/vechain-ai` | Claude Code reads `.claude-plugin/marketplace.json`, then `/plugin install <name>` installs individual plugins |
+| **Skills CLI** | `npx skills add vechain/vechain-ai` | Agent-agnostic CLI finds `SKILL.md` files and installs them into any supported coding agent |
 | **Local install** | `./scripts/install-local.sh` | Copies skills to `~/.claude/skills/` for development and testing |
 
 The **marketplace** path requires two metadata files:

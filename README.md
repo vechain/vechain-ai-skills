@@ -6,10 +6,10 @@ AI plugins, agents, and tools for VeChain development.
 
 ```bash
 # Skills CLI (any agent)
-npx skills add vechain/vechain-dev-skill
+npx skills add vechain/vechain-ai
 
 # Claude Code Marketplace
-/plugin marketplace add vechain/vechain-dev-skill
+/plugin marketplace add vechain/vechain-ai
 
 # Install the plugin
 /plugin install vechain-dev          # Full-stack VeChain development

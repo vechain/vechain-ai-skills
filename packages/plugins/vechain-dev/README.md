@@ -12,14 +12,14 @@ VeChain development plugin for Claude Code. Provides skills covering the full Ve
 ## Installation
 
 ```bash
-npx skills add https://github.com/vechain/vechain-dev-skill
+npx skills add https://github.com/vechain/vechain-ai
 ```
 
 Or install locally:
 
 ```bash
-git clone https://github.com/vechain/vechain-dev-skill
-cd vechain-dev-skill
+git clone https://github.com/vechain/vechain-ai
+cd vechain-ai
 ./scripts/install-local.sh
 ```
 

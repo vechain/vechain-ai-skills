@@ -15,14 +15,14 @@ This monorepo contains:
 ### Install the VeChain Dev Plugin
 
 ```bash
-npx skills add https://github.com/vechain/vechain-dev-skill
+npx skills add https://github.com/vechain/vechain-ai
 ```
 
 ### Local Development
 
 ```bash
-git clone https://github.com/vechain/vechain-dev-skill
-cd vechain-dev-skill
+git clone https://github.com/vechain/vechain-ai
+cd vechain-ai
 npm install
 npx nx run vechain-dev:validate
 ```

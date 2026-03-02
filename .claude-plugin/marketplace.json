@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "VeChain-specific AI tools (skills, plugins, agents) for developers and AI agents building on the VeChainThor blockchain.",
-    "repository": "https://github.com/vechain/vechain-dev-skill"
+    "repository": "https://github.com/vechain/vechain-ai"
   },
   "plugins": [
     {
