@@ -1,6 +1,6 @@
 {
   "name": "vechain-dev",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Full-stack VeChain development — dApps (VeChain Kit, dapp-kit), smart contracts (Solidity + Hardhat), fee delegation, multi-clause transactions, testing, security, and DeFi ecosystem (VeBetterDAO, StarGate, governance)",
   "author": {
     "name": "VeChain",
