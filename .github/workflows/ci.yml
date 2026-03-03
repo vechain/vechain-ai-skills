@@ -25,4 +25,4 @@ jobs:
         run: npx markdownlint-cli2 '**/*.md' '#node_modules' '#.git'
 
       - name: Validate plugin structure
-        run: node scripts/validate-plugin.cjs packages/plugins/vechain-dev
+        run: node scripts/validate-plugin.cjs

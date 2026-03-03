@@ -1,8 +1,0 @@
-{
-  "name": "@vechain-ai/vechain-dev",
-  "version": "0.1.0",
-  "private": true,
-  "description": "VeChain development plugin — skills for building dApps, smart contracts, and integrations on VeChainThor",
-  "license": "MIT",
-  "keywords": ["vechain", "claude", "skill", "plugin", "blockchain", "dapp"]
-}

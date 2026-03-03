@@ -1,6 +1,6 @@
 # Contributing
 
-We welcome contributions! This guide covers development setup, the repo architecture, and how to add skills and plugins.
+We welcome contributions! This guide covers development setup, the repo architecture, and how to add skills.
 
 ## Development Setup
 
@@ -8,23 +8,19 @@ We welcome contributions! This guide covers development setup, the repo architec
 git clone https://github.com/vechain/vechain-ai
 cd vechain-ai
 npm install
-npx nx run vechain-dev:validate       # Validate plugin structure
-npx nx run vechain-dev:lint-markdown   # Lint markdown files
+npm run validate              # Validate plugin structure
+npm run lint-markdown          # Lint markdown files
 ```
 
 ## Repo Structure
 
 ```text
 .claude-plugin/
-  marketplace.json                          # Plugin marketplace catalog
-packages/plugins/vechain-dev/
-  .claude-plugin/
-    plugin.json                             # Plugin manifest (name, version, skills)
-  skills/
-    vechain-dev/                            # SKILL.md + references/ (15 files)
-scripts/                                    # Validation and install scripts
-evals/                                      # Promptfoo evaluation suites
-docs/                                       # Documentation
+  marketplace.json                # Plugin marketplace catalog
+  plugin.json                     # Plugin manifest (name, version, skills)
+skills/
+  vechain-dev/                    # SKILL.md + references/ (15 files)
+scripts/                          # Validation and install scripts
 ```
 
 ## Default Stack
@@ -42,25 +38,20 @@ The skills encode these opinionated defaults:
 
 ## Distribution Channels
 
-This repo supports three ways users can install plugins. All must stay in sync:
+This repo supports three install methods. All must stay in sync:
 
 | Channel | Command | What it does |
 |---------|---------|-------------|
-| **Plugin marketplace** | `/plugin marketplace add vechain/vechain-ai` | Claude Code reads `.claude-plugin/marketplace.json`, then `/plugin install <name>` installs individual plugins |
-| **Skills CLI** | `npx skills add vechain/vechain-ai` | Agent-agnostic CLI finds `SKILL.md` files and installs them into any supported coding agent |
-| **Local install** | `./scripts/install-local.sh` | Copies skills to `~/.claude/skills/` for development and testing |
+| **Plugin marketplace** | `/plugin marketplace add vechain/vechain-ai` | Claude Code reads `.claude-plugin/marketplace.json`, then `/plugin install <name>` |
+| **Skills CLI** | `npx skills add vechain/vechain-ai` | Agent-agnostic CLI finds `SKILL.md` files |
+| **Local install** | `./scripts/install-local.sh` | Copies skills to `~/.claude/skills/` for development |
 
-The **marketplace** path requires two metadata files:
-
-- **`.claude-plugin/marketplace.json`** (repo root) — lists all plugins in the repo
-- **`.claude-plugin/plugin.json`** (per plugin) — declares the plugin's skills, version, and metadata
-
-## Adding a New Skill to an Existing Plugin
+## Adding a New Skill
 
 1. Create the skill directory:
 
     ```bash
-    mkdir -p packages/plugins/vechain-dev/skills/my-new-skill
+    mkdir -p skills/my-new-skill
     ```
 
 2. Create `SKILL.md` with frontmatter:
@@ -70,7 +61,6 @@ The **marketplace** path requires two metadata files:
     name: my-new-skill
     description: Short description of what this skill covers
     allowed-tools: []
-    model: sonnet
     license: MIT
     metadata:
       author: VeChain
@@ -82,17 +72,17 @@ The **marketplace** path requires two metadata files:
     Content here...
     ```
 
-3. (Optional) Add reference files in `references/` for supplementary docs:
+3. (Optional) Add reference files in `references/`:
 
     ```text
-    packages/plugins/vechain-dev/skills/my-new-skill/
+    skills/my-new-skill/
       SKILL.md
       references/
         detailed-topic.md
         another-topic.md
     ```
 
-4. Register the skill in `packages/plugins/vechain-dev/.claude-plugin/plugin.json`:
+4. Register the skill in `.claude-plugin/plugin.json`:
 
     ```json
     "skills": [
@@ -104,73 +94,33 @@ The **marketplace** path requires two metadata files:
 5. Validate:
 
     ```bash
-    npx nx run vechain-dev:validate
-    npx nx run vechain-dev:lint-markdown
-    ```
-
-## Adding a New Plugin
-
-Plugins are independent packages under `packages/plugins/`. To add a new one:
-
-1. Create the plugin directory:
-
-    ```bash
-    mkdir -p packages/plugins/my-plugin/{skills,.claude-plugin}
-    ```
-
-2. Add required files:
-
-    ```text
-    packages/plugins/my-plugin/
-      .claude-plugin/
-        plugin.json          # name, version, description, skills array
-      package.json           # @vechain-ai/my-plugin, private: true
-      project.json           # Nx project config
-      skills/
-        some-skill/
-          SKILL.md
-    ```
-
-3. Register in the root marketplace (`.claude-plugin/marketplace.json`):
-
-    ```json
-    "plugins": [
-      { "name": "vechain-dev", "source": "./packages/plugins/vechain-dev", "description": "..." },
-      { "name": "my-plugin", "source": "./packages/plugins/my-plugin", "description": "..." }
-    ]
-    ```
-
-4. Users can then install it individually:
-
-    ```bash
-    /plugin install my-plugin
+    npm run validate
+    npm run lint-markdown
     ```
 
 ## Key Files Reference
 
 | File | Purpose |
 |------|---------|
-| `.claude-plugin/marketplace.json` | Root catalog — lists all installable plugins |
-| `packages/plugins/*/.claude-plugin/plugin.json` | Per-plugin manifest — name, version, skills list |
-| `packages/plugins/*/skills/*/SKILL.md` | Skill content with YAML frontmatter |
-| `packages/plugins/*/skills/*/references/*.md` | Supplementary reference docs loaded on demand |
+| `.claude-plugin/marketplace.json` | Root catalog — lists installable plugins |
+| `.claude-plugin/plugin.json` | Plugin manifest — name, version, skills list |
+| `skills/*/SKILL.md` | Skill content with YAML frontmatter |
+| `skills/*/references/*.md` | Supplementary reference docs loaded on demand |
 | `scripts/validate-plugin.cjs` | Validates structure, frontmatter, and plugin.json consistency |
 | `scripts/install-local.sh` | Local install for development/testing |
-| `.markdownlint-cli2.jsonc` | Markdown linting rules |
 
 ## SKILL.md Conventions
 
 - **Frontmatter** must include: `name`, `description`, `license`
-- **`name`** must match the directory name (e.g., `name: vechain-dev` in `skills/vechain-dev/SKILL.md`)
+- **`name`** must match the directory name
 - Skills use `references/` for supplementary docs and a progressive disclosure table in SKILL.md
 - Cross-references between reference files use relative paths
 
 ## PR Checklist
 
-- [ ] `npx nx run vechain-dev:validate` passes
-- [ ] `npx nx run vechain-dev:lint-markdown` passes
-- [ ] New skills are registered in the plugin's `plugin.json`
-- [ ] New plugins are registered in the root `marketplace.json`
+- [ ] `npm run validate` passes
+- [ ] `npm run lint-markdown` passes
+- [ ] New skills are registered in `.claude-plugin/plugin.json`
 - [ ] Cross-references between files use correct relative paths
 
 ## Content Sources

@@ -12,7 +12,7 @@
   "plugins": [
     {
       "name": "vechain-dev",
-      "source": "./packages/plugins/vechain-dev",
+      "source": ".",
       "description": "Full-stack VeChain development — dApps, smart contracts, fee delegation, testing, security, and DeFi ecosystem (VeBetterDAO, StarGate, governance)"
     }
   ]

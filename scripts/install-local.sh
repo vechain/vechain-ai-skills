@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # VeChain Dev Plugin Installer for Claude Code
-# Copies skills from packages/plugins/vechain-dev/skills/ to the target location.
+# Copies skills to the target location.
 #
 # Usage: ./scripts/install-local.sh [--project | --path <path>]
 
@@ -10,7 +10,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PLUGIN_NAME="vechain-dev"
-SOURCE_DIR="$REPO_ROOT/packages/plugins/$PLUGIN_NAME/skills"
+SOURCE_DIR="$REPO_ROOT/skills"
 
 # Default to personal installation
 INSTALL_PATH="$HOME/.claude/skills/$PLUGIN_NAME"
@@ -53,9 +53,9 @@ if [ ! -d "$SOURCE_DIR" ]; then
     exit 1
 fi
 
-# Validate plugin before installing
-echo "Validating plugin..."
-node "$REPO_ROOT/scripts/validate-plugin.cjs" "$REPO_ROOT/packages/plugins/$PLUGIN_NAME"
+# Validate before installing
+echo "Validating..."
+node "$REPO_ROOT/scripts/validate-plugin.cjs"
 echo ""
 
 # Create parent directory if needed

@@ -5,16 +5,16 @@ allowed-tools: []
 license: MIT
 metadata:
   author: VeChain
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # VeChain Development Skill
 
 ## CRITICAL RULES
 
-1. **Read reference files FIRST.** When the user's request involves any topic in the reference table below, read those files before doing anything else — before planning, before spawning subagents, before writing code.
+1. **Read reference files FIRST.** When the user's request involves any topic in the reference table below, read those files before doing anything else — before writing code, before making decisions. Briefly mention which files you are reading so the user can confirm the skill is active (e.g., "Reading VeChain Kit reference...").
 2. **Information priority for VeChain topics:** (a) Reference files in this skill — always the primary source. (b) VeChain MCP tools — use `@vechain/mcp-server` for on-chain data, transaction building, and live network queries; use Kapa AI MCP for VeChain documentation lookups. (c) Web search — only as a last resort, and only for topics NOT covered in the reference files.
-3. **When using Plan mode or subagents**, include the full content from the reference files you read in the prompt you pass to the subagent. Subagents cannot read the reference files themselves.
+3. **Prefer working directly in the main conversation** for VeChain tasks. Plan mode and subagents do not inherit skill context and may fall back to web search instead of using reference files.
 
 ## Scope
 

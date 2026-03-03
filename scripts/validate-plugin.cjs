@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * Validate a plugin's structure and SKILL.md frontmatter.
+ * Validate plugin structure and SKILL.md frontmatter.
  *
- * Usage: node scripts/validate-plugin.cjs <plugin-path>
- * Example: node scripts/validate-plugin.cjs packages/plugins/vechain-dev
+ * Usage: node scripts/validate-plugin.cjs
+ * Validates from the repository root.
  */
 
 'use strict';
@@ -22,9 +22,7 @@ function parseYamlFrontmatter(content) {
   const result = {};
 
   for (const line of yaml.split('\n')) {
-    // Skip empty lines and nested keys (metadata sub-keys)
     if (!line.trim() || /^\s+/.test(line)) {
-      // Handle metadata sub-keys
       if (/^\s+/.test(line)) {
         const subMatch = line.match(/^\s+(\w[\w-]*):\s*(.+)/);
         if (subMatch) {
@@ -43,7 +41,6 @@ function parseYamlFrontmatter(content) {
       const key = kvMatch[1];
       let value = kvMatch[2].trim();
 
-      // Handle arrays like []
       if (value === '[]') {
         value = [];
       } else if (value.startsWith('[') && value.endsWith(']')) {
@@ -77,7 +74,6 @@ function validateSkillFile(skillPath, errors) {
     }
   }
 
-  // Validate name matches directory name
   const skillDir = path.basename(path.dirname(skillPath));
   if (frontmatter.name && frontmatter.name !== skillDir) {
     errors.push(
@@ -86,41 +82,34 @@ function validateSkillFile(skillPath, errors) {
   }
 }
 
-function validatePlugin(pluginDir) {
+function validate(rootDir) {
   const errors = [];
-  const abs = path.resolve(pluginDir);
+  const abs = path.resolve(rootDir);
 
-  // Check plugin has package.json
-  const pkgPath = path.join(abs, 'package.json');
-  if (!fs.existsSync(pkgPath)) {
-    errors.push(`${pluginDir}: missing package.json`);
-  }
-
-  // Check plugin has .claude-plugin/plugin.json
+  // Check .claude-plugin/plugin.json
   const pluginJsonPath = path.join(abs, '.claude-plugin', 'plugin.json');
   if (!fs.existsSync(pluginJsonPath)) {
-    errors.push(`${pluginDir}: missing .claude-plugin/plugin.json`);
+    errors.push('missing .claude-plugin/plugin.json');
   } else {
     const pluginJson = JSON.parse(fs.readFileSync(pluginJsonPath, 'utf-8'));
-    if (!pluginJson.name) errors.push(`${pluginDir}: plugin.json missing "name"`);
-    if (!pluginJson.version) errors.push(`${pluginDir}: plugin.json missing "version"`);
+    if (!pluginJson.name) errors.push('plugin.json missing "name"');
+    if (!pluginJson.version) errors.push('plugin.json missing "version"');
     if (!pluginJson.skills || !Array.isArray(pluginJson.skills) || pluginJson.skills.length === 0) {
-      errors.push(`${pluginDir}: plugin.json missing or empty "skills" array`);
+      errors.push('plugin.json missing or empty "skills" array');
     }
   }
 
-  // Check skills/ directory exists
+  // Check skills/ directory
   const skillsDir = path.join(abs, 'skills');
   if (!fs.existsSync(skillsDir)) {
-    errors.push(`${pluginDir}: missing skills/ directory`);
+    errors.push('missing skills/ directory');
     return errors;
   }
 
-  // Validate each skill
   const skills = fs.readdirSync(skillsDir, { withFileTypes: true }).filter((d) => d.isDirectory());
 
   if (skills.length === 0) {
-    errors.push(`${pluginDir}: no skills found in skills/ directory`);
+    errors.push('no skills found in skills/ directory');
     return errors;
   }
 
@@ -129,36 +118,35 @@ function validatePlugin(pluginDir) {
   for (const skill of skills) {
     const skillMd = path.join(skillsDir, skill.name, 'SKILL.md');
     if (!fs.existsSync(skillMd)) {
-      errors.push(`${pluginDir}/skills/${skill.name}: missing SKILL.md`);
+      errors.push(`skills/${skill.name}: missing SKILL.md`);
       continue;
     }
     validateSkillFile(skillMd, errors);
     skillNames.push(skill.name);
 
-    // If references/ exists, check it's not empty
     const refsDir = path.join(skillsDir, skill.name, 'references');
     if (fs.existsSync(refsDir)) {
       const refs = fs.readdirSync(refsDir).filter((f) => f.endsWith('.md'));
       if (refs.length === 0) {
-        errors.push(`${pluginDir}/skills/${skill.name}/references: directory exists but has no .md files`);
+        errors.push(`skills/${skill.name}/references: directory exists but has no .md files`);
       }
     }
   }
 
-  // Cross-check plugin.json skills against actual skill directories
+  // Cross-check plugin.json skills against actual directories
   if (fs.existsSync(pluginJsonPath)) {
     const pluginJson = JSON.parse(fs.readFileSync(pluginJsonPath, 'utf-8'));
     if (pluginJson.skills && Array.isArray(pluginJson.skills)) {
       for (const skillRef of pluginJson.skills) {
         const skillName = path.basename(skillRef);
         if (!skillNames.includes(skillName)) {
-          errors.push(`${pluginDir}: plugin.json references skill "${skillName}" but no matching directory found`);
+          errors.push(`plugin.json references skill "${skillName}" but no matching directory found`);
         }
       }
       for (const name of skillNames) {
         const listed = pluginJson.skills.some((s) => path.basename(s) === name);
         if (!listed) {
-          errors.push(`${pluginDir}: skill "${name}" exists but is not listed in plugin.json`);
+          errors.push(`skill "${name}" exists but is not listed in plugin.json`);
         }
       }
     }
@@ -167,20 +155,10 @@ function validatePlugin(pluginDir) {
   return errors;
 }
 
-// Main
-const pluginDir = process.argv[2];
-if (!pluginDir) {
-  console.error('Usage: node scripts/validate-plugin.cjs <plugin-path>');
-  process.exit(1);
-}
-
-if (!fs.existsSync(pluginDir)) {
-  console.error(`Error: "${pluginDir}" does not exist`);
-  process.exit(1);
-}
-
-console.log(`Validating plugin: ${pluginDir}`);
-const errors = validatePlugin(pluginDir);
+// Main — validate from repo root (script location is scripts/)
+const rootDir = path.resolve(__dirname, '..');
+console.log(`Validating: ${rootDir}`);
+const errors = validate(rootDir);
 
 if (errors.length > 0) {
   console.error(`\nValidation failed with ${errors.length} error(s):\n`);
@@ -189,7 +167,7 @@ if (errors.length > 0) {
   }
   process.exit(1);
 } else {
-  const skillsDir = path.join(path.resolve(pluginDir), 'skills');
+  const skillsDir = path.join(rootDir, 'skills');
   const skillCount = fs.readdirSync(skillsDir, { withFileTypes: true }).filter((d) => d.isDirectory()).length;
   console.log(`\nValidation passed! ${skillCount} skill(s) validated.`);
 }
