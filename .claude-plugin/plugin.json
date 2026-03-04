@@ -24,6 +24,8 @@
     "./skills/vechain-dev",
     "./skills/karpathy-guidelines",
     "./skills/translate",
-    "./skills/grill-me"
+    "./skills/grill-me",
+    "./skills/prd",
+    "./skills/ralph"
   ]
 }

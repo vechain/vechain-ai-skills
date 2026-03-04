@@ -16,6 +16,8 @@ npx skills add vechain/vechain-ai-skills
 /plugin install karpathy-guidelines  # LLM coding best practices
 /plugin install translate            # i18n translation management
 /plugin install grill-me             # Relentless plan interviewer
+/plugin install prd                  # PRD generator
+/plugin install ralph                # Autonomous agent runner
 ```
 
 ## Skills
@@ -35,6 +37,14 @@ Manages react-i18next translation files across 15 languages. Adds/removes keys, 
 ### grill-me
 
 Interview you relentlessly about every aspect of a plan until shared understanding is reached. Walks down each branch of the design tree, resolving dependencies between decisions one-by-one.
+
+### prd
+
+Generate structured Product Requirements Documents with clarifying questions, user stories, acceptance criteria, and functional requirements. Outputs to `tasks/prd-[feature-name].md`.
+
+### ralph
+
+Autonomous agent runner that implements features from PRDs. Converts PRDs to `prd.json`, then executes user stories one at a time via Claude CLI — each iteration implements one story, runs type checks, commits, and moves to the next.
 
 ## Contributing
 
