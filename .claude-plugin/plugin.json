@@ -23,6 +23,7 @@
   "skills": [
     "./skills/vechain-dev",
     "./skills/karpathy-guidelines",
-    "./skills/translate"
+    "./skills/translate",
+    "./skills/grill-me"
   ]
 }

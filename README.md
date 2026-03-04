@@ -15,6 +15,7 @@ npx skills add vechain/vechain-ai-skills
 /plugin install vechain-dev          # Full-stack VeChain development
 /plugin install karpathy-guidelines  # LLM coding best practices
 /plugin install translate            # i18n translation management
+/plugin install grill-me             # Relentless plan interviewer
 ```
 
 ## Skills
@@ -30,6 +31,10 @@ Behavioral guidelines to reduce common LLM coding mistakes. Surface assumptions,
 ### translate
 
 Manages react-i18next translation files across 15 languages. Adds/removes keys, keeps files sorted, enforces fixed-word rules, and verifies sync with the source locale.
+
+### grill-me
+
+Interview you relentlessly about every aspect of a plan until shared understanding is reached. Walks down each branch of the design tree, resolving dependencies between decisions one-by-one.
 
 ## Contributing
 
