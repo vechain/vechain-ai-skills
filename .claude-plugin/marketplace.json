@@ -41,6 +41,22 @@
         "repo": "vechain/vechain-ai-skills"
       },
       "description": "Interview you relentlessly about every aspect of a plan until shared understanding — walks the design tree, resolves dependencies one-by-one"
+    },
+    {
+      "name": "prd",
+      "source": {
+        "source": "github",
+        "repo": "vechain/vechain-ai-skills"
+      },
+      "description": "Generate a Product Requirements Document (PRD) for a new feature — clear, actionable, and suitable for implementation"
+    },
+    {
+      "name": "ralph",
+      "source": {
+        "source": "github",
+        "repo": "vechain/vechain-ai-skills"
+      },
+      "description": "Autonomous agent runner that implements features from PRDs — converts PRDs to prd.json, executes user stories one at a time via Claude CLI"
     }
   ]
 }
