@@ -91,7 +91,19 @@ This repo supports three install methods. All must stay in sync:
     ]
     ```
 
-5. Validate:
+5. Register the skill in `.claude-plugin/marketplace.json` (required for `/plugin install` to find it):
+
+    ```json
+    "plugins": [
+      {
+        "name": "my-new-skill",
+        "source": { "source": "github", "repo": "vechain/vechain-ai-skills" },
+        "description": "Short description"
+      }
+    ]
+    ```
+
+6. Validate:
 
     ```bash
     npm run validate
@@ -121,6 +133,7 @@ This repo supports three install methods. All must stay in sync:
 - [ ] `npm run validate` passes
 - [ ] `npm run lint-markdown` passes
 - [ ] New skills are registered in `.claude-plugin/plugin.json`
+- [ ] New skills are registered in `.claude-plugin/marketplace.json`
 - [ ] Cross-references between files use correct relative paths
 
 ## Content Sources

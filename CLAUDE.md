@@ -47,7 +47,10 @@ metadata:
 1. Create `skills/<skill-name>/SKILL.md` with frontmatter
 2. Optionally add `references/` directory for supplementary files
 3. Register in `.claude-plugin/plugin.json` skills array
-4. Run `npm run validate` to verify structure
+4. Register in `.claude-plugin/marketplace.json` plugins array (required for `/plugin install` to find the skill)
+5. Run `npm run validate` to verify structure
+
+**IMPORTANT:** A skill MUST be added to BOTH `plugin.json` AND `marketplace.json`. Missing `marketplace.json` means `/plugin install <name>` will return "not found".
 
 ## Code Style
 

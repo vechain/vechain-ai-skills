@@ -57,6 +57,14 @@
         "repo": "vechain/vechain-ai-skills"
       },
       "description": "Autonomous agent runner that implements features from PRDs — converts PRDs to prd.json, executes user stories one at a time via Claude CLI"
+    },
+    {
+      "name": "auto-voting-relayers",
+      "source": {
+        "source": "github",
+        "repo": "vechain/vechain-ai-skills"
+      },
+      "description": "Complete domain knowledge for VeBetterDAO's auto-voting and relayer system — smart contracts, relayer node, relayer dashboard, fee mechanics, and veDelegate comparison"
     }
   ]
 }
