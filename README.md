@@ -21,6 +21,7 @@ npx skills add vechain/vechain-ai-skills
 /plugin install translate                    # i18n translation management
 /plugin install grill-me                     # Relentless plan interviewer
 /plugin install auto-voting-relayers         # Auto-voting & relayer system
+/plugin install create-vechain-dapp          # Scaffold VeChain dApp projects
 
 # Update frequently to always have up to date skills
 ```
@@ -58,6 +59,10 @@ Interview you relentlessly about every aspect of a plan until shared understandi
 ### auto-voting-relayers
 
 Complete domain knowledge for VeBetterDAO's auto-voting and relayer system -- smart contracts (XAllocationVoting, VoterRewards, RelayerRewardsPool), relayer node, relayer dashboard, fee mechanics, and veDelegate comparison.
+
+### create-vechain-dapp
+
+Scaffold a VeChain dApp with Next.js 14, VeChain Kit, Chakra UI v3, and GitHub Pages deployment. Supports standalone (frontend-only) or monorepo (Turbo + Hardhat contracts) modes.
 
 ## Contributing
 

@@ -28,6 +28,7 @@
     "./skills/stargate",
     "./skills/translate",
     "./skills/grill-me",
-    "./skills/auto-voting-relayers"
+    "./skills/auto-voting-relayers",
+    "./skills/create-vechain-dapp"
   ]
 }
