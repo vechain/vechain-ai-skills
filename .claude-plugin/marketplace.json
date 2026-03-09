@@ -16,7 +16,39 @@
         "source": "github",
         "repo": "vechain/vechain-ai-skills"
       },
-      "description": "Full-stack VeChain development — dApps, smart contracts, fee delegation, testing, security, and DeFi ecosystem (VeBetterDAO, StarGate, governance)"
+      "description": "Core VeChain development — SDK usage, fee delegation (VIP-191), multi-clause transactions, dual-token model, and legacy migration"
+    },
+    {
+      "name": "vechain-kit",
+      "source": {
+        "source": "github",
+        "repo": "vechain/vechain-ai-skills"
+      },
+      "description": "Frontend dApp development with VeChain Kit and dapp-kit — wallet connection, social login, smart accounts, hooks, components, React Query patterns"
+    },
+    {
+      "name": "smart-contract-development",
+      "source": {
+        "source": "github",
+        "repo": "vechain/vechain-ai-skills"
+      },
+      "description": "Solidity smart contract development on VeChainThor — Hardhat setup, ERC-20/721 patterns, gas optimization, testing with Thor Solo, security auditing"
+    },
+    {
+      "name": "vebetterdao",
+      "source": {
+        "source": "github",
+        "repo": "vechain/vechain-ai-skills"
+      },
+      "description": "VeBetterDAO and X2Earn app development — B3TR/VOT3 tokens, reward distribution, sustainability proofs, governance, VeVote"
+    },
+    {
+      "name": "stargate",
+      "source": {
+        "source": "github",
+        "repo": "vechain/vechain-ai-skills"
+      },
+      "description": "StarGate staking on VeChainThor — NFT-based staking, tiered rewards, validator delegation, node management"
     },
     {
       "name": "translate",

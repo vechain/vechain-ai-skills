@@ -1,44 +1,45 @@
 ---
 name: vechain-dev
-description: VeChain development playbook. VeChain Kit for React dApps, SDK for backends, Solidity+Hardhat for contracts, Thor Solo for testing. Covers fee delegation, multi-clause, social login, VeBetterDAO, StarGate, governance.
+description: Core VeChain development — SDK usage, fee delegation (VIP-191), multi-clause transactions, dual-token model, legacy migration, and general VeChainThor development patterns.
 allowed-tools: []
 license: MIT
 metadata:
   author: VeChain
-  version: "0.2.0"
+  version: "0.3.0"
 ---
 
 # VeChain Development Skill
 
 ## CRITICAL RULES
 
-1. **Read reference files FIRST.** When the user's request involves any topic in the reference table below, read those files before doing anything else — before writing code, before making decisions. Briefly mention which files you are reading so the user can confirm the skill is active (e.g., "Reading VeChain Kit reference...").
+1. **Read reference files FIRST.** When the user's request involves any topic in the reference table below, read those files before doing anything else — before writing code, before making decisions. Briefly mention which files you are reading so the user can confirm the skill is active (e.g., "Reading fee delegation reference...").
 2. **Information priority for VeChain topics:** (a) Reference files in this skill — always the primary source. (b) VeChain MCP tools — use `@vechain/mcp-server` for on-chain data, transaction building, and live network queries; use Kapa AI MCP for VeChain documentation lookups. (c) Web search — only as a last resort, and only for topics NOT covered in the reference files.
 3. **Prefer working directly in the main conversation** for VeChain tasks. Plan mode and subagents do not inherit skill context and may fall back to web search instead of using reference files.
 4. **After compaction or context loss**, re-read this SKILL.md to restore awareness of the reference table and operating procedure before continuing work.
 
 ## Scope
 
-Use this Skill for any VeChain development task:
+Use this Skill for general VeChain development:
 
-- Frontend dApps (React/Next.js), wallet connection, social login
-- Transaction building, sending, confirmation UX
-- Solidity smart contracts on VeChainThor
-- Multi-clause transactions, fee delegation (VIP-191)
-- Testing with Hardhat + Thor Solo
-- Security reviews
-- VeBetterDAO / X2Earn apps, StarGate staking, governance
+- SDK usage (`@vechain/sdk-core`, `@vechain/sdk-network`, ethers adapter)
+- Fee delegation (VIP-191) — gasless transactions, backend sponsorship, vechain.energy
+- Multi-clause transactions — atomic batching of multiple operations
+- Dual-token model (VET for value, VTHO for gas)
+- Legacy migration from Connex/thor-devkit to VeChain SDK
+- General VeChainThor development patterns and reference links
 
-## Default stack (opinionated)
+For specialized topics, see the companion skills:
+
+- **vechain-kit** — Frontend dApps, wallet connection, social login, VeChain Kit, dapp-kit
+- **smart-contract-development** — Solidity, Hardhat, testing, security, gas optimization
+- **vebetterdao** — X2Earn apps, B3TR/VOT3, governance, VeVote
+- **stargate** — NFT staking, validators, delegation, VTHO rewards
+
+## Default stack
 
 | Layer | Default | Alternative |
 |-------|---------|-------------|
-| Frontend | `@vechain/vechain-kit` | `@vechain/dapp-kit-react` (lightweight/non-React) |
 | SDK | `@vechain/sdk-core` + `@vechain/sdk-network` | `@vechain/sdk-ethers-adapter` |
-| Contracts | Solidity + Hardhat + `@vechain/sdk-hardhat-plugin` | -- |
-| EVM target | `paris` (mandatory) | -- |
-| Testing | Hardhat + Thor Solo (`--on-demand`) | -- |
-| Types | TypeChain (`@typechain/ethers-v6`) | `@vechain/vechain-contract-types` (pre-built) |
 | Node | Node 20 LTS (managed via `nvm`) | -- |
 
 ## Operating procedure
@@ -49,13 +50,10 @@ Before installing dependencies or running any command:
 
 - Check if `.nvmrc` exists in the project root. If yes, run `nvm use` to switch to the required version.
 - If `.nvmrc` does not exist, create one with `20` (Node 20 LTS) and run `nvm use`.
-- When adding dependencies that require a specific Node version, update `.nvmrc` accordingly.
 
 ### 2. Detect project structure
 
-- `turbo.json` present → follow Turborepo conventions (`apps/frontend`, `packages/contracts`, `packages/*`)
-- Use `useThor` for Thor client access (both VeChain Kit and dapp-kit v2). `useConnex` is deprecated everywhere.
-- Apply conditional patterns (Chakra UI, i18n, Zustand) only when the project uses them
+- `turbo.json` present → follow Turborepo conventions (`apps/`, `packages/*`)
 
 ### 3. Clarify before implementing
 
@@ -65,45 +63,20 @@ When the user's request is ambiguous or could be solved multiple ways, **ask bef
 - If multiple architectures are viable, present trade-offs and let the user choose
 - Only proceed to implementation once the approach is agreed upon
 
-### 4. Classify the task layer
-
-UI/hooks → SDK/scripts → Smart contracts → Testing/CI → Infra
-
-### 5. Pick building blocks
-
-- UI (full-featured): VeChain Kit hooks + components
-- UI (lightweight/non-React): dapp-kit
-- Backend/scripts: `@vechain/sdk-core` + `sdk-network` directly
-- Legacy Connex present: migrate or isolate behind adapter boundary
-
-**When to ask the user:** If the project doesn't already use VeChain Kit or dapp-kit and the user hasn't specified which to use, ask before choosing. Key questions:
-
-- Do you need social login (email, Google, passkey)? → VeChain Kit
-- Do you want pre-built UI modals and hooks (WalletButton, TransactionModal, token hooks)? → VeChain Kit
-- Do you want a lightweight wallet-only integration with minimal dependencies? → dapp-kit
-- Non-React framework? → dapp-kit
-
-### 6. Implement with VeChain-specific correctness
+### 4. Implement with VeChain-specific correctness
 
 - Network: always explicit (`mainnet`/`testnet`/`solo`)
 - Gas: estimate first, use fee delegation where appropriate
 - Transactions: use multi-clause when batching benefits atomicity or UX
 - Tokens: VET for value, VTHO for gas (dual-token model)
-- Social login: Generic Delegator auto-enabled (users pay gas in VET/VTHO/B3TR); app-sponsored delegation optional for better UX; smart accounts; pre-fetch data before `sendTransaction`
 
-### 7. Test
-
-- Unit: Hardhat + Thor Solo
-- Integration: Thor Solo with realistic state
-- Wallet UX: mocked hook/provider tests
-
-### 8. Verify and deliver
+### 5. Verify and deliver
 
 A task is **not complete** until all applicable gates pass:
 
-1. **Code compiles** — no build errors (`npm run build` or equivalent succeeds)
+1. **Code compiles** — no build errors
 2. **Tests pass** — existing tests still pass; new logic has test coverage
-3. **Risk notes documented** — any signing, fee, or token-transfer implications are called out to the user
+3. **Risk notes documented** — any signing, fee, or token-transfer implications are called out
 
 Then provide:
 
@@ -117,18 +90,7 @@ Read the matching files BEFORE doing anything else. See Critical Rules above.
 
 | Topic | File | Read when user mentions... |
 |-------|------|---------------------------|
-| Frontend patterns (shared) | [references/frontend.md](references/frontend.md) | frontend, React Query, caching, query keys, loading, skeleton, Turborepo, Chakra, i18n, state management |
-| VeChain Kit | [references/frontend-vechain-kit.md](references/frontend-vechain-kit.md) | VeChain Kit, useWallet, useSendTransaction, useCallClause, WalletButton, TransactionModal, social login, Privy, smart accounts, account abstraction, theming |
-| dapp-kit | [references/frontend-dappkit.md](references/frontend-dappkit.md) | dapp-kit, DAppKitProvider, lightweight wallet |
-| Legacy migration | [references/sdk-migration.md](references/sdk-migration.md) | Connex, thor-devkit, migration, deprecated |
-| Smart contracts | [references/smart-contracts.md](references/smart-contracts.md) | Solidity, Hardhat, ERC-20, ERC-721, deploy, contract interaction, libraries, contract size, upgradeable |
-| Gas optimization | [references/smart-contracts-optimization.md](references/smart-contracts-optimization.md) | gas, optimize, storage packing, assembly, unchecked |
-| Testing | [references/testing.md](references/testing.md) | test, Thor Solo, Docker, CI, fixtures |
-| ABI / codegen | [references/abi-codegen.md](references/abi-codegen.md) | TypeChain, ABI, typechain-types, code generation |
 | Fee delegation | [references/fee-delegation.md](references/fee-delegation.md) | gasless, sponsored, VIP-191, delegator, vechain.energy |
 | Multi-clause | [references/multi-clause-transactions.md](references/multi-clause-transactions.md) | batch, multi-clause, atomic, multiple operations |
-| Security | [references/security.md](references/security.md) | security, audit, vulnerability, reentrancy, access control |
-| VeBetterDAO | [references/vebetterdao.md](references/vebetterdao.md) | X2Earn, B3TR, sustainability, rewards, VeBetterDAO |
-| StarGate staking | [references/stargate-staking.md](references/stargate-staking.md) | staking, StarGate, validator, delegation, VTHO rewards, node tier |
-| Governance | [references/governance.md](references/governance.md) | VeVote, governance, voting, VOT3, proposal, steering committee |
+| Legacy migration | [references/sdk-migration.md](references/sdk-migration.md) | Connex, thor-devkit, migration, deprecated |
 | Reference links | [references/resources.md](references/resources.md) | docs URL, npm link, GitHub repo |
