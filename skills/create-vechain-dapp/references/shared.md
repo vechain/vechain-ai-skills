@@ -9,6 +9,20 @@ In monorepo mode, place them under `apps/frontend/` instead of the project root.
 20
 ```
 
+## Compatibility notes
+
+### Chakra UI v3 + VeChain Kit
+
+VeChain Kit uses Chakra UI v2 internally. Newer Chakra v3 releases can introduce CSS variable changes that break VeChain Kit's buttons and modals (wrong colors, missing styles). **Pin `@chakra-ui/react` to an exact version known to work** (currently `3.30.0`). Do NOT use `^` ranges.
+
+### Webpack fallbacks
+
+Some VeChain packages import Node.js modules (`fs`, `net`, `tls`) that don't exist in the browser. The `next.config.js` must include webpack fallbacks for client-side builds. See the `next.config.js` template in standalone.md or monorepo.md.
+
+### Static asset paths with basePath
+
+Next.js `basePath` is NOT auto-prepended to `metadata.icons`, `<img src>`, or any raw string paths. Use `process.env.NEXT_PUBLIC_BASE_PATH` prefix for these. The `<Image>` component from `next/image` DOES auto-prepend `basePath`.
+
 ## `.env.example`
 
 ```text

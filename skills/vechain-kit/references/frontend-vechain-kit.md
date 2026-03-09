@@ -701,3 +701,20 @@ See [Smart Accounts documentation](https://docs.vechainkit.vechain.org/social-lo
 - `font.family` does not exist — use `fonts.family`
 - `hoverBg` does not exist in the types
 - Minimal config: set `modal.backgroundColor` and `textColor` — all other colors auto-derive
+
+### Chakra UI v3 compatibility
+
+VeChain Kit uses Chakra UI v2 internally. When the host app uses Chakra v3, **pin `@chakra-ui/react` to an exact working version** (currently `3.30.0`). Newer v3 releases can change CSS variable generation and break VeChain Kit's button/modal styling (wrong colors, missing backgrounds). Do NOT use `^` ranges like `^3.26.0`.
+
+### Webpack fallbacks for Next.js
+
+Some VeChain packages (e.g. `@vechain/vebetterdao-relayer-node`) import Node.js modules (`fs`, `net`, `tls`). For Next.js client-side builds, add webpack fallbacks in `next.config.js`:
+
+```js
+webpack: (config, { isServer }) => {
+  if (!isServer) {
+    config.resolve.fallback = { ...config.resolve.fallback, fs: false, net: false, tls: false }
+  }
+  return config
+},
+```

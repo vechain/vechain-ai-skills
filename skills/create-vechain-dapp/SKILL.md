@@ -104,7 +104,11 @@ VeChain Kit cannot run server-side. The entire app shell (`ClientApp`) is loaded
 
 ### Static export for GitHub Pages
 
-`next.config.js` uses `output: "export"` with configurable `basePath`/`assetPrefix` via `NEXT_PUBLIC_BASE_PATH` env var. GitHub Actions sets this for GitHub Pages deployment.
+`next.config.js` uses `output: "export"` with configurable `basePath`/`assetPrefix` via `NEXT_PUBLIC_BASE_PATH` env var. GitHub Actions defaults to `/${{ github.event.repository.name }}` for GitHub Pages. Set to empty string for custom domains. **Important:** `metadata.icons` and raw `<img src>` paths do NOT auto-prepend `basePath` — prefix them manually.
+
+### Chakra UI version pinning
+
+Pin `@chakra-ui/react` to an exact version (currently `3.30.0`). VeChain Kit uses Chakra v2 internally, and newer v3 releases can break VeChain Kit's button/modal theming.
 
 ### Provider chain
 

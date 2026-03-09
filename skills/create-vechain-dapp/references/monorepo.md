@@ -150,7 +150,7 @@ coverage/
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@chakra-ui/react": "^3.26.0",
+    "@chakra-ui/react": "3.30.0",
     "@emotion/react": "^11.14.0",
     "@tanstack/react-query": "^5.64.2",
     "@vechain/vechain-kit": "latest",
@@ -188,6 +188,17 @@ const nextConfig = {
   reactStrictMode: true,
   typescript: { ignoreBuildErrors: false },
   eslint: { ignoreDuringBuilds: true },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      }
+    }
+    return config
+  },
 }
 
 module.exports = nextConfig
@@ -480,8 +491,9 @@ coverage/
 
 ## `.github/workflows/deploy.yml`
 
-Set `NEXT_PUBLIC_BASE_PATH` to `/<repo-name>` for `username.github.io/<repo-name>`,
-or empty string `""` for custom domains.
+Uses `/${{ github.event.repository.name }}` by default for GitHub Pages (`username.github.io/<repo-name>`).
+Set to `""` if using a custom domain or if the repo is named `username.github.io`.
+Note: `metadata.icons` and raw `<img src>` do NOT auto-prepend `basePath` — prefix them manually.
 
 ```yaml
 name: Deploy to GitHub Pages
@@ -518,7 +530,7 @@ jobs:
 
       - run: yarn build
         env:
-          NEXT_PUBLIC_BASE_PATH: ""
+          NEXT_PUBLIC_BASE_PATH: "/${{ github.event.repository.name }}"
           NEXT_PUBLIC_NETWORK: "{{NETWORK_TYPE}}"
           NODE_OPTIONS: "--max-old-space-size=4096"
 
