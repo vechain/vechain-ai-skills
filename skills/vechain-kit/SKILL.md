@@ -29,6 +29,7 @@ Use this Skill for frontend dApp development on VeChain:
 - React Query caching, query keys, cache invalidation
 - Transaction UX, loading states, confirmation patterns
 - Theming and Privy setup
+- i18n with react-i18next: bi-directional language sync (Kit ↔ host app), pre-commit/ESLint for missing or unused translation keys
 
 ## Default stack
 
@@ -87,3 +88,4 @@ Read the matching files BEFORE doing anything else. See Critical Rules above.
 | VeChain Kit | [references/frontend-vechain-kit.md](references/frontend-vechain-kit.md) | VeChain Kit, useWallet, useSendTransaction, useCallClause, WalletButton, TransactionModal, social login, Privy, smart accounts, account abstraction, theming |
 | dapp-kit | [references/frontend-dappkit.md](references/frontend-dappkit.md) | dapp-kit, DAppKitProvider, lightweight wallet |
 | Frontend patterns | [references/frontend.md](references/frontend.md) | frontend, React Query, caching, query keys, loading, skeleton, Turborepo, Chakra, i18n, state management |
+| Translations + Kit | [references/translations-vechain-kit.md](references/translations-vechain-kit.md) | i18n, translations, language sync, VeChain Kit language, missing translations, pre-commit, ESLint, unused keys |

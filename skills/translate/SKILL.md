@@ -79,3 +79,20 @@ Two use cases:
 2. **Fixed translations** — value is the mandatory translation for that concept (e.g. `"endorsement": "supporto"` means always use "supporto" for endorsement in Italian)
 
 When translating, ALWAYS check this file first. If a word has a fixed translation for the target language, use it consistently in every sentence.
+
+## VeChain Kit: bi-directional language sync
+
+If the app uses `@vechain/vechain-kit`, keep Kit UI language in sync with the host app:
+
+- **App → Kit:** Inside `VeChainKitProvider`, subscribe to `i18n.on("languageChanged", ...)` and call `setLanguage(lng)` from `useCurrentLanguage()` so when the user changes language in the app (e.g. footer selector), Kit updates.
+- **Kit → App:** Pass `language={i18n.language}` and `onLanguageChange={(lng) => i18n.changeLanguage(lng)}` into `VeChainKitProvider` so when the user changes language in Kit (e.g. wallet modal), the app updates.
+
+See the **vechain-kit** skill reference [translations-vechain-kit.md](https://github.com/vechain/vechain-ai-skills/blob/main/skills/vechain-kit/references/translations-vechain-kit.md) for the full implementation pattern.
+
+## Pre-commit and ESLint (missing / unused keys)
+
+- **Unused keys in en.json:** Run a script that finds keys in `en.json` never used in code (`t("...")`, `i18nKey="..."`) and exit non-zero so pre-commit fails. Run when `en.json` or code is staged.
+- **Missing keys in other locales:** Run a script that compares each locale's keys to `en.json` and fails if any locale has missing or extra keys. Run when any translation file is staged or in CI.
+- **ESLint:** Optionally add `eslint-plugin-i18next` (or similar) to flag missing keys in the editor/lint.
+
+See the **vechain-kit** skill reference [translations-vechain-kit.md](https://github.com/vechain/vechain-ai-skills/blob/main/skills/vechain-kit/references/translations-vechain-kit.md) for a short summary table.
