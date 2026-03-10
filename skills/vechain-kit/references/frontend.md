@@ -60,9 +60,16 @@ import { getCallClauseQueryKey } from '@vechain/vechain-kit';
 const key = getCallClauseQueryKey(CONTRACT_ADDRESS, 'balanceOf', [address]);
 ```
 
-### Cache Invalidation After Transactions
+### Cache Invalidation After Transactions (CRITICAL)
 
-**Always invalidate affected queries after a successful transaction.** This is the most common mistake -- stale data after a write.
+**Every `onTxConfirmed` callback MUST invalidate all queries whose data could have changed.** This is a hard rule, not a suggestion. Stale UI after a successful transaction is a bug -- users see outdated balances, missing navigation items, or phantom banners because queries still hold pre-transaction data.
+
+**Before writing any `useSendTransaction`, ask yourself:**
+1. What on-chain state does this transaction change? (e.g., registration status, balances, reward claims)
+2. Which queries read that state? (e.g., `useRelayerRegistration`, `useCallClause` for `balanceOf`, custom `useQuery` hooks)
+3. Are there UI elements gated on that data? (e.g., navbar items, banners, badges, conditional buttons)
+
+**Invalidate ALL of them in `onTxConfirmed`.**
 
 ```tsx
 import { useQueryClient } from '@tanstack/react-query';
@@ -94,9 +101,15 @@ function StakeButton({ amount }: { amount: string }) {
 // Invalidate all queries for a contract
 queryClient.invalidateQueries({ queryKey: ['contract', contractAddress] });
 
-// Invalidate everything (use sparingly)
+// Invalidate everything -- prefer this when the transaction affects
+// multiple components across the app (e.g., registration, role changes)
 queryClient.invalidateQueries();
 ```
+
+**Common mistakes:**
+- Forgetting to invalidate navbar/sidebar queries after a state change (e.g., registering as a relayer should update the "Manage Relayer" nav link)
+- Only invalidating the "primary" query but missing secondary effects (e.g., claiming rewards should also refresh the unclaimed rewards banner, round data, and balance displays)
+- Relying on stale static data (e.g., a `report.json`) instead of verifying on-chain state after a write -- always prefer on-chain reads (`useCallClause` / `simulateTransaction`) over cached static files for data that can change via transactions
 
 ### Batch Queries with useQueries
 
@@ -296,7 +309,7 @@ const { language, setLanguage } = useCurrentLanguage();
 - Show transaction status via `TransactionModal` or `TransactionToast`
 - Provide a transaction ID immediately after signing
 - Track confirmation via `useTxReceipt`
-- Invalidate affected React Query caches on transaction success
+- **Invalidate ALL affected React Query caches in `onTxConfirmed`** -- see [Cache Invalidation After Transactions](#cache-invalidation-after-transactions-critical). Think through every query that reads data changed by this transaction, including queries in other components (navbar, banners, badges, lists)
 - Show actionable errors:
   - user rejected signing (`UserRejectedError`)
   - transaction reverted (`RevertReasonError` with reason)
