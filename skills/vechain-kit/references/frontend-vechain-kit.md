@@ -4,7 +4,7 @@
 
 Use when the user asks about: VeChain Kit, useWallet, useSendTransaction, useCallClause, WalletButton, TransactionModal, provider setup, social login, Privy, smart accounts, account abstraction, theming.
 
-See [frontend.md](frontend.md) for choosing VeChain Kit vs dapp-kit, React Query patterns, Turborepo architecture, and shared frontend conventions.
+See the **frontend** skill for choosing VeChain Kit vs dapp-kit, React Query patterns, Turborepo architecture, and shared frontend conventions.
 
 ---
 
@@ -36,7 +36,7 @@ yarn add @vechain/vechain-contract-types
 
 For npm, use `npm install --legacy-peer-deps` instead.
 
-**Why `@vechain/vechain-contract-types`?** It provides TypeChain-generated ABIs and factories for all major VeChain ecosystem contracts (B3TR, VOT3, StarGate, VET domains, smart accounts, etc.). Use these with `useCallClause` instead of hand-writing ABIs. See [abi-codegen.md](abi-codegen.md) for the full list.
+**Why `@vechain/vechain-contract-types`?** It provides TypeChain-generated ABIs and factories for all major VeChain ecosystem contracts (B3TR, VOT3, StarGate, VET domains, smart accounts, etc.). Use these with `useCallClause` instead of hand-writing ABIs. See the **smart-contract-development** skill (`references/abi-codegen.md`) for the full list.
 
 **If the project doesn't have React Query yet**, also set up the `QueryClientProvider`:
 
@@ -213,7 +213,7 @@ All hooks use TanStack Query (React Query) and return a consistent shape:
 { data, isLoading, isError, error, refetch, isRefetching }
 ```
 
-See [frontend.md](frontend.md) for React Query caching, invalidation, and loading state patterns.
+See the **frontend** skill for React Query caching, invalidation, and loading state patterns.
 
 ### useWallet -- Connection State
 
@@ -602,7 +602,7 @@ To improve UX, you can optionally sponsor transactions so users pay nothing:
 <VeChainKitProvider feeDelegation={{ delegatorUrl: 'https://your-delegator.com/delegate' }}>
 ```
 
-See [fee-delegation.md](fee-delegation.md) for Generic Delegator gas estimation, per-transaction sponsorship, and vechain.energy setup.
+See the **vechain-core** skill (`references/fee-delegation.md`) for Generic Delegator gas estimation, per-transaction sponsorship, and vechain.energy setup.
 
 ### Pre-fetch Data Before Transactions
 Fetching during `sendTransaction` blocks popups for social login:

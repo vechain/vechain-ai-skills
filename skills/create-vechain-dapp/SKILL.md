@@ -120,7 +120,7 @@ Pin `@chakra-ui/react` to an exact version (currently `3.30.0`). VeChain Kit use
 - `WalletButton` from vechain-kit renders the connect/account button
 - `useWallet`, `useSendTransaction`, `useCallClause` for wallet/contract interaction
 - Refer to the `vechain-kit` skill for advanced patterns (hooks, theming, social login)
-- Refer to the `vechain-dev` skill for SDK patterns (fee delegation, multi-clause)
+- Refer to the `vechain-core` skill for SDK patterns (fee delegation, multi-clause)
 
 ## Reference files
 

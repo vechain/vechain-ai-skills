@@ -4,7 +4,7 @@
 
 Use when the user asks about: dapp-kit, DAppKitProvider, lightweight wallet connection, non-React VeChain frontend.
 
-See [frontend.md](frontend.md) for choosing VeChain Kit vs dapp-kit and shared frontend patterns.
+See the **frontend** skill for choosing VeChain Kit vs dapp-kit and shared frontend patterns.
 
 ## When to Choose dapp-kit Over VeChain Kit
 

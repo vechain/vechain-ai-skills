@@ -21,8 +21,9 @@
   ],
   "license": "MIT",
   "skills": [
-    "./skills/vechain-dev",
+    "./skills/vechain-core",
     "./skills/vechain-kit",
+    "./skills/frontend",
     "./skills/smart-contract-development",
     "./skills/vebetterdao",
     "./skills/stargate",

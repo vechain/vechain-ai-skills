@@ -158,7 +158,7 @@ When using the Generic Delegator, implement these alerts:
 - **Transaction confirmation**: Show the exact amount of VET/VTHO/B3TR that will be deducted
 - **Insufficient funds**: Alert if the user lacks balance to cover fees, with the required amount
 
-See [frontend-vechain-kit.md](frontend-vechain-kit.md) for full `useSendTransaction` API.
+See the **vechain-kit** skill (`references/frontend-vechain-kit.md`) for the full `useSendTransaction` API.
 
 ### Frontend: Fee Delegation via dapp-kit
 
