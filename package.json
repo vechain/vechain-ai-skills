@@ -7,7 +7,8 @@
   "scripts": {
     "lint-markdown": "markdownlint-cli2 '**/*.md' '#node_modules' '#.git'",
     "validate": "node scripts/validate-plugin.cjs",
-    "verify-refs": "node scripts/verify-references.cjs"
+    "verify-refs": "node scripts/verify-references.cjs",
+    "size-report": "node scripts/skill-size-report.cjs --markdown"
   },
   "devDependencies": {
     "markdownlint-cli2": "^0.21.0"
