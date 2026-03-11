@@ -308,7 +308,10 @@ function TransactionComponent() {
     signerAccountAddress: account?.address ?? '',
     // gasPadding: 0.2,  // Optional: 20% gas buffer
     onTxConfirmed: () => {
-      // Invalidate affected queries after successful transaction
+      // CRITICAL: Invalidate ALL queries affected by this transaction.
+      // Think through every component that reads data changed by the tx
+      // (balances, registration status, navbar items, banners, lists).
+      // See frontend.md "Cache Invalidation After Transactions" for details.
       queryClient.invalidateQueries({
         queryKey: getCallClauseQueryKey(CONTRACT, 'balanceOf', [account?.address]),
       });
