@@ -657,8 +657,8 @@ generateMockLocalConfig()
   },
   "dependencies": {
     "@{{PROJECT_NAME}}/config": "*",
-    "@openzeppelin/contracts": "^5.0.2",
-    "@openzeppelin/contracts-upgradeable": "^5.0.2",
+    "@openzeppelin/contracts": "5.0.2",
+    "@openzeppelin/contracts-upgradeable": "5.0.2",
     "@openzeppelin/upgrades-core": "^1.40.0"
   },
   "devDependencies": {

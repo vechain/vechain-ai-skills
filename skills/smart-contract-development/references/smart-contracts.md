@@ -17,7 +17,7 @@ Use when the user asks about: Solidity contracts, Hardhat setup, deployment, ERC
 mkdir my-vechain-project && cd my-vechain-project
 npm init -y
 npm install --save-dev hardhat @vechain/sdk-hardhat-plugin
-npm install @openzeppelin/contracts
+npm install @openzeppelin/contracts@5.0.2
 npx hardhat init
 ```
 
@@ -79,12 +79,22 @@ evmVersion: 'paris'
 
 Opcodes introduced after Paris (e.g., `PUSH0` from Shanghai) are NOT supported.
 
+### Pinned Versions
+
+VeChain is not 100% aligned with Ethereum. Pin these to avoid compatibility issues:
+
+- **Solidity**: `0.8.20` — use exact pragma (`pragma solidity 0.8.20;`), not `^0.8.20`
+- **OpenZeppelin Contracts**: `5.0.2` — pin exact version, no caret (`@openzeppelin/contracts@5.0.2`)
+- **OpenZeppelin Upgradeable**: `5.0.2` — pin exact version (`@openzeppelin/contracts-upgradeable@5.0.2`)
+
+Newer Solidity versions may emit opcodes not yet supported on VeChainThor. Newer OZ versions may use Solidity features or patterns that break on VeChain's EVM.
+
 ## Common Contract Patterns
 
 ### ERC-20 Token (VIP-180 compatible)
 ```solidity
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -105,7 +115,7 @@ contract MyToken is ERC20, Ownable {
 ### ERC-721 NFT (VIP-181 compatible)
 ```solidity
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
@@ -138,7 +148,7 @@ contract MyNFT is ERC721, ERC721URIStorage, Ownable {
 ### Access Control Pattern
 ```solidity
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
@@ -440,7 +450,7 @@ For upgradeable contracts, **always use the proxy helpers**. These deploy the im
 
 Required dependencies:
 ```bash
-npm install @openzeppelin/contracts @openzeppelin/contracts-upgradeable @openzeppelin/upgrades-core
+npm install @openzeppelin/contracts@5.0.2 @openzeppelin/contracts-upgradeable@5.0.2 @openzeppelin/upgrades-core
 ```
 
 Key functions:
