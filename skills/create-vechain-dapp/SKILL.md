@@ -27,7 +27,7 @@ Scaffold a production-ready VeChain dApp with wallet connection, dark mode, and 
 | UI | Chakra UI v3, next-themes |
 | Wallet | @vechain/vechain-kit (VeWorld + WalletConnect) |
 | State | React Query |
-| Contracts | Hardhat + @vechain/sdk-hardhat-plugin (monorepo only) |
+| Contracts | Hardhat + @vechain/sdk-hardhat-plugin + OpenZeppelin UUPS (monorepo only) |
 | Build | Turborepo (monorepo only) |
 | Deploy | GitHub Pages via GitHub Actions |
 | Node | 20 LTS |
@@ -80,7 +80,7 @@ yarn install
 
 **Standalone:** `yarn dev` (localhost:3000), `yarn build` (static export → `out/`)
 
-**Monorepo:** `yarn dev`, `yarn build`, `yarn contracts:compile`, `yarn contracts:test`
+**Monorepo:** `yarn dev` (auto-deploys contracts to solo), `yarn build`, `yarn contracts:compile`, `yarn contracts:test`
 
 ### Phase 4 — Git init
 
@@ -113,6 +113,27 @@ Pin `@chakra-ui/react` to an exact version (currently `3.30.0`). VeChain Kit use
 ### Provider chain
 
 `ChakraProvider` → `ColorModeProvider` → `QueryClientProvider` → `VeChainKitProvider` → App
+
+### Contract architecture (monorepo only)
+
+All contracts in the monorepo scaffold are **UUPS upgradeable** using OpenZeppelin's upgradeable contracts and a custom `VeChainProxy.sol` (ERC1967). Key files:
+
+- **`scripts/helpers/upgrades.ts`** — core deploy/upgrade proxy helpers. Copy as-is from the template. All deploy scripts, upgrade scripts, and tests depend on it.
+- **`contracts/VeChainProxy.sol`** — ERC1967 proxy contract. Copy as-is.
+- **`scripts/deploy/deploy.ts`** — production deployment using `deployProxy` from helpers.
+- **`scripts/upgrade/`** — interactive CLI upgrade system with versioned config registry.
+
+For contract architecture, upgrade patterns, storage safety, security, and testing — follow the **`smart-contract-development` skill**. It is the authoritative reference for all Solidity development patterns on VeChain.
+
+### Config package and auto-deployment (monorepo only)
+
+The monorepo uses a `packages/config` package that centralizes contract addresses and network settings per environment. Key mechanics:
+
+- **`local.ts` is git-ignored** — each dev's solo deployment produces different addresses. A mock is auto-generated on first run.
+- **`NEXT_PUBLIC_APP_ENV`** controls which config file is loaded (`local`, `testnet`, `mainnet`).
+- **`yarn dev`** runs against solo, **`yarn dev:testnet`** against testnet, **`yarn dev:mainnet`** against mainnet.
+- **Turbo pipeline** ensures: generate mock config → compile contracts → check/deploy on target network → write addresses to matching config file → start frontend.
+- **`checkContractsDeployment.ts`** runs before dev for any environment — if contracts aren't deployed, it deploys them and writes addresses to the correct config file (`local.ts`, `testnet.ts`, or `mainnet.ts`).
 
 ### VeChain Kit integration
 

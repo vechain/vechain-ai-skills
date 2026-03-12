@@ -76,7 +76,7 @@ Read the matching files BEFORE doing anything else. See Critical Rules above.
 
 | Topic | File | Read when user mentions... |
 |-------|------|---------------------------|
-| Smart contracts | [references/smart-contracts.md](references/smart-contracts.md) | Solidity, Hardhat, ERC-20, ERC-721, deploy, contract interaction, libraries, contract size, upgradeable |
+| Smart contracts | [references/smart-contracts.md](references/smart-contracts.md) | Solidity, Hardhat, ERC-20, ERC-721, deploy, contract interaction, libraries, contract size, upgradeable, proxy, upgrade, reinitializer, version pattern, deploy helpers, NatSpec, Slither |
 | Gas optimization | [references/smart-contracts-optimization.md](references/smart-contracts-optimization.md) | gas, optimize, storage packing, assembly, unchecked |
 | Testing | [references/testing.md](references/testing.md) | test, Thor Solo, Docker, CI, fixtures |
 | ABI / codegen | [references/abi-codegen.md](references/abi-codegen.md) | TypeChain, ABI, typechain-types, code generation |
