@@ -22,7 +22,7 @@ npx skills add vechain/vechain-ai-skills
 /plugin install grill-me                     # Relentless plan interviewer
 /plugin install auto-voting-relayers         # Auto-voting & relayer system
 /plugin install create-vechain-dapp          # Scaffold VeChain dApp projects
-/plugin install vechain-react-native-dev    # React Native VeWorld wallet integration
+/plugin install vechain-react-native-dev     # React Native VeWorld wallet integration
 /plugin install indexer-core                 # indexer-core library integration & maintenance
 
 # Update frequently to always have up to date skills
