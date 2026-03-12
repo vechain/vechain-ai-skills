@@ -77,6 +77,9 @@ Source files from `shared.md` go under `apps/frontend/src/`.
     "typecheck": "turbo typecheck",
     "contracts:compile": "turbo compile --filter=@{{PROJECT_NAME}}/contracts",
     "contracts:test": "turbo test --filter=@{{PROJECT_NAME}}/contracts",
+    "contracts:generate-docs": "turbo generate-docs --filter=@{{PROJECT_NAME}}/contracts",
+    "contracts:coverage": "turbo coverage --filter=@{{PROJECT_NAME}}/contracts",
+    "contracts:size": "turbo size --filter=@{{PROJECT_NAME}}/contracts",
     "clean": "turbo clean && rm -rf node_modules"
   },
   "dependencies": {
@@ -631,6 +634,9 @@ generateMockLocalConfig()
     "upgrade:local": "hardhat run scripts/upgrade/select-and-upgrade.ts --network vechain_solo",
     "upgrade:testnet": "hardhat run scripts/upgrade/select-and-upgrade.ts --network vechain_testnet",
     "upgrade:mainnet": "hardhat run scripts/upgrade/select-and-upgrade.ts --network vechain_mainnet",
+    "generate-docs": "hardhat docgen",
+    "coverage": "hardhat coverage",
+    "size": "hardhat size-contracts",
     "clean": "hardhat clean"
   },
   "dependencies": {
@@ -643,7 +649,11 @@ generateMockLocalConfig()
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@vechain/sdk-hardhat-plugin": "latest",
     "hardhat": "^2.22.0",
+    "hardhat-contract-sizer": "^2.10.0",
+    "hardhat-ignore-warnings": "^0.2.12",
     "inquirer": "^9.0.0",
+    "solidity-coverage": "^0.8.14",
+    "solidity-docgen": "^0.6.0-beta.36",
     "typescript": "^5"
   }
 }
@@ -655,6 +665,10 @@ generateMockLocalConfig()
 import { HardhatUserConfig } from "hardhat/config"
 import "@nomicfoundation/hardhat-toolbox"
 import "@vechain/sdk-hardhat-plugin"
+import "hardhat-contract-sizer"
+import "hardhat-ignore-warnings"
+import "solidity-coverage"
+import "solidity-docgen"
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -663,6 +677,16 @@ const config: HardhatUserConfig = {
       optimizer: { enabled: true, runs: 200 },
       evmVersion: "paris",
     },
+  },
+  contractSizer: {
+    alphaSort: true,
+    disambiguatePaths: false,
+    runOnCompile: true,
+    strict: true,
+    except: ["mocks", "deprecated", "interfaces", "test", "openzeppelin"],
+  },
+  docgen: {
+    pages: "files",
   },
   defaultNetwork: "hardhat",
   networks: {
