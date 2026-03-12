@@ -22,7 +22,8 @@ npx skills add vechain/vechain-ai-skills
 /plugin install grill-me                     # Relentless plan interviewer
 /plugin install auto-voting-relayers         # Auto-voting & relayer system
 /plugin install create-vechain-dapp          # Scaffold VeChain dApp projects
-/plugin install vechain-react-native-dev    # React Native VeWorld wallet integration
+/plugin install vechain-react-native-dev     # React Native VeWorld wallet integration
+/plugin install indexer-core                 # indexer-core library integration & maintenance
 
 # Update frequently to always have up to date skills
 ```
@@ -68,6 +69,10 @@ Scaffold a VeChain dApp with Next.js 14, VeChain Kit, Chakra UI v3, and GitHub P
 ### vechain-react-native-dev
 
 React Native VeWorld wallet integration — deep link communication, NaCl encryption, transaction signing, certificate signing, EIP-712 typed data, and multi-network support via `@vechain/react-native-wallet-link`.
+
+### indexer-core
+
+VeChain `indexer-core` library — `IndexerFactory`, `IndexerRunner`, `LogsIndexer` vs `BlockIndexer` mode selection, ABI and business events, rollback semantics, and integration guidance.
 
 ## Contributing
 

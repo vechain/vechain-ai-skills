@@ -32,6 +32,7 @@
     "./skills/auto-voting-relayers",
     "./skills/create-vechain-dapp",
     "./skills/vechain-react-native-dev",
+    "./skills/indexer-core",
     "./skills/x-2-earn-apps"
   ]
 }
