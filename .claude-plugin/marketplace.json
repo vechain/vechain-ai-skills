@@ -11,7 +11,7 @@
   },
   "plugins": [
     {
-      "name": "vechain-dev",
+      "name": "vechain-core",
       "source": {
         "source": "github",
         "repo": "vechain/vechain-ai-skills"
@@ -24,7 +24,15 @@
         "source": "github",
         "repo": "vechain/vechain-ai-skills"
       },
-      "description": "Frontend dApp development with VeChain Kit and dapp-kit — wallet connection, social login, smart accounts, hooks, components, React Query patterns"
+      "description": "VeChain Kit and dapp-kit packages — installation, hooks, components, wallet connection, social login, smart accounts, theming, Privy setup"
+    },
+    {
+      "name": "frontend",
+      "source": {
+        "source": "github",
+        "repo": "vechain/vechain-ai-skills"
+      },
+      "description": "Generic frontend patterns for VeChain dApps — React Query, Turborepo, state management, Chakra UI, i18n, transaction UX"
     },
     {
       "name": "smart-contract-development",

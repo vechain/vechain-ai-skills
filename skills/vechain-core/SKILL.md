@@ -1,14 +1,14 @@
 ---
-name: vechain-dev
+name: vechain-core
 description: Core VeChain development — SDK usage, fee delegation (VIP-191), multi-clause transactions, dual-token model, legacy migration, and general VeChainThor development patterns.
 allowed-tools: []
 license: MIT
 metadata:
   author: VeChain
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
-# VeChain Development Skill
+# VeChain Core Skill
 
 ## CRITICAL RULES
 
@@ -30,7 +30,8 @@ Use this Skill for general VeChain development:
 
 For specialized topics, see the companion skills:
 
-- **vechain-kit** — Frontend dApps, wallet connection, social login, VeChain Kit, dapp-kit
+- **frontend** — Generic frontend patterns: React Query, Turborepo, state management, Chakra UI, i18n, transaction UX
+- **vechain-kit** — VeChain Kit and dapp-kit packages: hooks, components, wallet connection, social login
 - **smart-contract-development** — Solidity, Hardhat, testing, security, gas optimization
 - **vebetterdao** — X2Earn apps, B3TR/VOT3, governance, VeVote
 - **stargate** — NFT staking, validators, delegation, VTHO rewards

@@ -1,4 +1,4 @@
-name: CI
+name: Lint
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  validate:
-    name: Lint & Validate
+  lint:
+    name: Markdown & Structure
     runs-on: ubuntu-latest
 
     steps:

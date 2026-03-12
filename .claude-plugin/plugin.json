@@ -1,7 +1,7 @@
 {
-  "name": "vechain-dev",
-  "version": "0.2.0",
-  "description": "VeChain AI skills for developers — SDK, fee delegation, multi-clause transactions, VeChain Kit, smart contracts, VeBetterDAO, StarGate, and more",
+  "name": "vechain-ai",
+  "version": "0.3.0",
+  "description": "VeChain AI skill collection — vechain-core, vechain-kit, frontend, smart-contract-development, vebetterdao, stargate, and more (11 skills)",
   "author": {
     "name": "VeChain",
     "email": "developers@vechain.org"
@@ -21,8 +21,9 @@
   ],
   "license": "MIT",
   "skills": [
-    "./skills/vechain-dev",
+    "./skills/vechain-core",
     "./skills/vechain-kit",
+    "./skills/frontend",
     "./skills/smart-contract-development",
     "./skills/vebetterdao",
     "./skills/stargate",

@@ -6,7 +6,10 @@
   "license": "MIT",
   "scripts": {
     "lint-markdown": "markdownlint-cli2 '**/*.md' '#node_modules' '#.git'",
-    "validate": "node scripts/validate-plugin.cjs"
+    "validate": "node scripts/validate-plugin.cjs",
+    "verify-refs": "node scripts/verify-references.cjs",
+    "size-report": "node scripts/skill-size-report.cjs --markdown",
+    "security-audit": "node scripts/skill-security-audit.cjs"
   },
   "devDependencies": {
     "markdownlint-cli2": "^0.21.0"

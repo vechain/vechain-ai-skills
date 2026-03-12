@@ -10,7 +10,7 @@ Use when the user asks about: frontend, React, Next.js, React Query, caching, qu
 |----------|-------------|----------|
 | **Best for** | Full-featured dApps | Lightweight wallet-only |
 | **Frameworks** | React, Next.js only | React, Next, Vue, Svelte, Angular |
-| **Social login** | Yes (Privy, built-in) | DIY only (complex, see [frontend-vechain-kit.md](frontend-vechain-kit.md)) |
+| **Social login** | Yes (Privy, built-in) | DIY only (complex, see the **vechain-kit** skill) |
 | **Pre-built UI** | WalletButton, modals, transaction UI | Minimal (WalletButton only) |
 | **Transaction hooks** | useSendTransaction, useTransferVET, useTransferERC20 | useSendTransaction (basic) |
 | **Contract read hooks** | useCallClause (React Query-based) | None (use SDK directly) |

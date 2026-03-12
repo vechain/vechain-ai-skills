@@ -54,6 +54,28 @@ export function VechainKitProviderWrapper({ children }) {
 
 Host app language selector: call `i18n.changeLanguage(value)`; sync to Kit happens via `languageChanged`.
 
+### Persist language across refreshes
+
+In your `i18n.ts`, check localStorage first to avoid losing the selected language on page reload:
+
+```typescript
+const customLanguageDetector = {
+  name: 'customDetector',
+  lookup: () => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('i18nextLng');
+      if (stored && supportedLanguages.includes(stored)) return stored;
+    }
+    const browserLang = navigator.language.split('-')[0];
+    if (supportedLanguages.includes(browserLang)) return browserLang;
+    return 'en';
+  },
+  cacheUserLanguage: (lng: string) => {
+    localStorage.setItem('i18nextLng', lng);
+  },
+};
+```
+
 ### Optional: dayjs locale
 
 If you use dayjs: `i18n.on("languageChanged", (lng) => { dayjs.locale(lng === "tw" ? "zh-tw" : lng) })`.

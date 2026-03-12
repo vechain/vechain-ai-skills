@@ -1,0 +1,108 @@
+name: Verify References
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  verify-refs:
+    name: Skill References
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Verify skill references
+        id: verify
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          node scripts/verify-references.cjs 2>&1 | tee /tmp/verify-output.txt
+
+      - name: Comment on PR (failure)
+        if: steps.verify.outcome == 'failure' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const output = fs.readFileSync('/tmp/verify-output.txt', 'utf-8').trim();
+
+            const body = [
+              '## Skill Reference Verification Failed',
+              '',
+              '```',
+              output,
+              '```',
+              '',
+              '### How to fix',
+              '',
+              'Copy this prompt into Claude Code or your AI assistant:',
+              '',
+              '> The CI reference checker found broken links or stale skill names.',
+              '> Read each affected file listed below and fix the issues:',
+              '>',
+              output.split('\n').filter(l => l.trim().startsWith('skills/')).map(l => `> - ${l.trim()}`).join('\n'),
+              '>',
+              '> For broken file links: if the file moved to another skill, replace the',
+              '> relative link with a skill reference (e.g., "See the **skill-name** skill").',
+              '> For stale skill names: update the bold name to match the current directory.',
+              '> Run `npm run verify-refs` to confirm the fix.',
+            ].join('\n');
+
+            const marker = '## Skill Reference Verification Failed';
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Clean up PR comment (success)
+        if: steps.verify.outcome == 'success' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '## Skill Reference Verification Failed';
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+              });
+            }
+
+      - name: Fail if verification failed
+        if: steps.verify.outcome == 'failure'
+        run: exit 1
