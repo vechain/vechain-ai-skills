@@ -161,36 +161,109 @@ contract Governed is AccessControl {
 }
 ```
 
-### Upgradeable Contract (UUPS)
+### Upgradeable Contract (UUPS) — Base Template
+
+Production-ready base for all upgradeable contracts. Uses `AccessControl` (not `Ownable`) and ERC-7201 namespaced storage.
+
 ```solidity
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.20;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-contract MyUpgradeable is Initializable, UUPSUpgradeable, OwnableUpgradeable {
-    uint256 public value;
+contract MyContract is AccessControlUpgradeable, UUPSUpgradeable {
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+
+    error UnauthorizedUser(address user);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(uint256 _value) public initializer {
-        __Ownable_init(msg.sender);
+    // ---------- Storage ------------ //
+    // ERC-7201 namespaced storage
+    struct MyContractStorage {
+        uint256 value;
+        // Add fields here. NEVER reorder or remove existing ones.
+    }
+
+    // keccak256(abi.encode(uint256(keccak256("storage.MyContract")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant MyContractStorageLocation =
+        0x...; // Compute this value for your contract name
+
+    function _getMyContractStorage() private pure returns (MyContractStorage storage $) {
+        assembly {
+            $.slot := MyContractStorageLocation
+        }
+    }
+
+    // ---------- Initializer ------------ //
+    function initialize(address _upgrader, address[] memory _admins) external initializer {
+        require(_upgrader != address(0), "MyContract: upgrader is the zero address");
+
         __UUPSUpgradeable_init();
-        value = _value;
+        __AccessControl_init();
+
+        _grantRole(UPGRADER_ROLE, _upgrader);
+        for (uint256 i; i < _admins.length; i++) {
+            require(_admins[i] != address(0), "MyContract: admin address cannot be zero");
+            _grantRole(DEFAULT_ADMIN_ROLE, _admins[i]);
+        }
     }
 
-    function setValue(uint256 _value) external onlyOwner {
-        value = _value;
+    // ---------- Modifiers ------------ //
+    modifier onlyRoleOrAdmin(bytes32 role) {
+        if (!hasRole(role, msg.sender) && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            revert UnauthorizedUser(msg.sender);
+        }
+        _;
     }
 
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    // ---------- Upgrade ------------ //
+    function _authorizeUpgrade(address) internal virtual override onlyRole(UPGRADER_ROLE) {}
+
+    function version() public pure virtual returns (string memory) {
+        return "1";
+    }
 }
 ```
+
+Key patterns:
+- **`_disableInitializers()`** in constructor — prevents implementation contract from being initialized directly
+- **`UPGRADER_ROLE`** — separates upgrade authority from admin
+- **Namespaced storage** — each contract gets a unique storage slot, avoids collisions
+- **`version()`** — returns current version string, used to verify upgrades succeeded
+- **`onlyRoleOrAdmin`** — convenience modifier for functions that can be called by a specific role OR admin
+
+### ERC1967 Proxy Contract
+
+Minimal UUPS-compatible proxy. All upgradeable contracts are deployed behind this proxy. Copy as-is.
+
+```solidity
+// SPDX-License-Identifier: MIT
+// Forked from OpenZeppelin Contracts v5.0.0 (proxy/ERC1967/ERC1967Proxy.sol)
+pragma solidity 0.8.20;
+
+import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
+import { ERC1967Utils } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
+
+/// @dev UUPS-compatible ERC1967 proxy.
+/// Constructor deploys the implementation and optionally calls an initializer via delegatecall.
+// solc-ignore-next-line missing-receive
+contract VeChainProxy is Proxy {
+    constructor(address implementation, bytes memory _data) payable {
+        ERC1967Utils.upgradeToAndCall(implementation, _data);
+    }
+
+    function _implementation() internal view virtual override returns (address) {
+        return ERC1967Utils.getImplementation();
+    }
+}
+```
+
+The proxy stores the implementation address in the ERC1967 slot (`0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc`). Upgrades happen via `upgradeToAndCall()` on the implementation contract (UUPS pattern — upgrade logic lives in the implementation, not the proxy).
 
 ## Solidity Libraries
 
@@ -345,7 +418,7 @@ Use the **same** `libraries` object for both deploy and upgrade of the implement
 
 ## Deployment
 
-### Deployment Script
+### Simple (non-upgradeable) Deployment
 ```typescript
 import { ethers } from 'hardhat';
 
@@ -361,21 +434,270 @@ async function main() {
 main().catch(console.error);
 ```
 
+### Proxy Deployment Helpers (`scripts/helpers/upgrades.ts`)
+
+For upgradeable contracts, **always use the proxy helpers**. These deploy the implementation + proxy together and handle initialization.
+
+Required dependencies:
+```bash
+npm install @openzeppelin/contracts @openzeppelin/contracts-upgradeable @openzeppelin/upgrades-core
+```
+
+Key functions:
+
+```typescript
+import { deployProxy, upgradeProxy, deployProxyOnly, initializeProxy } from "./helpers/upgrades"
+
+// Deploy proxy + implementation + initialize in one step
+const contract = await deployProxy("MyContract", [upgraderAddr, [adminAddr]])
+
+// Deploy proxy without initialization (for contracts needing multi-step init)
+const proxyAddress = await deployProxyOnly("MyContract")
+await initializeProxy(proxyAddress, "MyContract", [upgraderAddr, [adminAddr]])
+
+// Upgrade existing proxy to new implementation
+const upgraded = await upgradeProxy(
+  "MyContractV1",     // previous version contract name
+  "MyContract",       // new version contract name (latest = no suffix)
+  proxyAddress,
+  [reinitArg1],       // args for initializeV{N}
+  { version: 2 }      // triggers initializeV2
+)
+```
+
+How `deployProxy` works internally:
+1. Deploys the implementation contract
+2. Deploys `VeChainProxy` pointing to the implementation
+3. Encodes and calls the `initialize` (or `initializeV{N}`) function via delegatecall
+4. Verifies the proxy's implementation address matches (via `@openzeppelin/upgrades-core`)
+5. Returns a contract instance attached to the proxy address
+
+How `upgradeProxy` works internally:
+1. Deploys the new implementation contract
+2. Calls `upgradeToAndCall()` on the existing proxy (via the previous version's ABI)
+3. If args provided, encodes `initializeV{N}` and passes as calldata
+4. Verifies the new implementation address
+5. Returns a contract instance with the new ABI attached to the proxy
+
 ### Deploy Commands
 ```bash
 # Local (Thor Solo)
-npx hardhat run scripts/deploy.ts --network vechain_solo
+npx hardhat run scripts/deploy/deploy.ts --network vechain_solo
 
 # Testnet
-npx hardhat run scripts/deploy.ts --network vechain_testnet
+npx hardhat run scripts/deploy/deploy.ts --network vechain_testnet
 
 # Mainnet
-npx hardhat run scripts/deploy.ts --network vechain_mainnet
+npx hardhat run scripts/deploy/deploy.ts --network vechain_mainnet
 ```
 
 ### Deploy with Fee Delegation
 
 Add a `delegate` config to the network. See the **vechain-core** skill (`references/fee-delegation.md`) for full setup.
+
+---
+
+## Upgrade Infrastructure
+
+### Version Pattern
+
+When upgrading a contract to a new version:
+
+1. Copy current contract to `contracts/deprecated/V{N}/` before modifying
+2. Increment `version()` return value in the new version
+3. Add `initializeV{N}` with `reinitializer(N)` for any new state setup
+4. Create upgrade script in `scripts/upgrade/upgrades/{contract}/{contract}-v{N}.ts`
+5. Register in `scripts/upgrade/upgradesConfig.ts` for CLI selection
+6. Update `scripts/deploy/deploy.ts` with new deployment logic
+7. Update `test/helpers/deploy.ts` to mirror deployment changes
+8. Create upgrade test: `test/{contract}/v{N}-upgrade.test.ts`
+
+### Reinitializer Pattern
+
+Use `reinitializer(N)` for upgrade initialization. The `N` must match the version number and can only be called once.
+
+```solidity
+function initializeV2(address newParam) public reinitializer(2) {
+    MyContractStorage storage $ = _getMyContractStorage();
+    $.newField = newParam;
+}
+
+function initializeV3(uint256 threshold) public reinitializer(3) {
+    MyContractStorage storage $ = _getMyContractStorage();
+    $.threshold = threshold;
+}
+```
+
+The proxy helpers automatically find the right initializer: `getInitializerData` looks for `initializeV{N}` when `version` is specified, or `initialize` for V1.
+
+### Keeping Deprecated Versions
+
+Deprecated versions in `contracts/deprecated/V{N}/` enable upgrade tests that verify no storage corruption:
+
+```typescript
+// Deploy previous version
+const v1 = await deployProxy("MyContractV1", [upgrader, [admin]])
+await v1.setValue(42)
+
+// Upgrade to new version
+const v2 = await upgradeProxy("MyContractV1", "MyContract", await v1.getAddress(), [newParam], { version: 2 })
+
+// Verify state preserved
+expect(await v2.value()).to.equal(42)
+// Verify new functionality
+expect(await v2.version()).to.equal("2")
+```
+
+### CRITICAL: Upgrade Test Version Mismatch
+
+When writing upgrade tests, always use **explicit version names** for intermediate upgrades:
+
+```typescript
+// WRONG: "MyContract" refers to the LATEST version (now V5), not V2
+const v2 = await upgradeProxy("MyContractV1", "MyContract", ...) // Skips V2/V3/V4!
+
+// CORRECT: explicit version for intermediate upgrades
+const v2 = await upgradeProxy("MyContractV1", "MyContractV2", ...)
+const v3 = await upgradeProxy("MyContractV2", "MyContractV3", ...)
+
+// Only use bare name when upgrading TO the latest version
+const latest = await upgradeProxy("MyContractV4", "MyContract", ...)
+```
+
+### CLI Upgrade System
+
+Interactive CLI for selecting and running upgrades:
+
+```bash
+npx hardhat run scripts/upgrade/select-and-upgrade.ts --network vechain_solo
+```
+
+Reads from `upgradesConfig.ts` — a registry mapping contract names to available versions:
+
+```typescript
+// scripts/upgrade/upgradesConfig.ts
+export const upgradeConfig: Record<string, UpgradeContract> = {
+  MyContract: {
+    name: "my-contract",
+    configAddressField: "myContract",    // key in config.contracts
+    versions: ["v2", "v3"],
+    descriptions: {
+      v2: "Add threshold configuration",
+      v3: "Add batch processing support",
+    },
+  },
+}
+```
+
+### Upgrade Script Template
+
+```typescript
+// scripts/upgrade/upgrades/my-contract/my-contract-v2.ts
+import { getConfig } from "@repo/config"
+import { upgradeProxy } from "../../helpers/upgrades"
+import { ethers } from "hardhat"
+
+async function main() {
+  const config = getConfig()
+
+  const contract = await ethers.getContractAt("MyContract", config.contracts.myContract)
+  console.log("Current version:", await contract.version())
+
+  const upgraded = await upgradeProxy(
+    "MyContractV1",
+    "MyContract",
+    config.contracts.myContract,
+    [newParam],       // reinitializer args
+    { version: 2 },
+  )
+
+  const newVersion = await upgraded.version()
+  if (parseInt(newVersion) !== 2) throw new Error("Upgrade failed")
+  console.log("Upgraded to version:", newVersion)
+}
+
+main().catch(console.error)
+```
+
+### Deploy + Test Sync
+
+When upgrading contracts, **always update both**:
+1. **`scripts/deploy/deploy.ts`** — production deployment (auto-runs via `yarn dev` if contracts not deployed)
+2. **`test/helpers/deploy.ts`** — test fixture deployment (used by all contract tests)
+
+These files must stay aligned — changes to one usually require changes to the other.
+
+### Adding a New Contract Checklist
+
+When adding a completely new contract:
+1. Create the contract following the BaseUpgradeable template
+2. Add to `scripts/deploy/deploy.ts`
+3. Add to `test/helpers/deploy.ts`
+4. Update `packages/config` — add address field to `AppConfig` type
+5. Update `packages/config/scripts/generateMockLocalConfig.mjs` — add mock address
+6. Update `scripts/checkContractsDeployment.ts` — add deployment check
+
+---
+
+## Code Style
+
+### NatSpec Documentation
+
+All public/external functions require NatSpec:
+
+```solidity
+/// @notice Brief description of what the function does
+/// @dev Implementation details, edge cases, or important notes
+/// @param paramName Description of the parameter
+/// @return Description of the return value
+function myFunction(uint256 paramName) external returns (uint256) {
+```
+
+### Custom Errors
+
+Use custom errors instead of `require` strings (more gas efficient):
+
+```solidity
+error InvalidAmount(uint256 provided, uint256 minimum);
+error UnauthorizedUser(address user);
+
+function deposit(uint256 amount) external {
+    if (amount < MIN_AMOUNT) revert InvalidAmount(amount, MIN_AMOUNT);
+}
+```
+
+### Events
+
+Emit events for all state changes:
+
+```solidity
+event ValueUpdated(address indexed user, uint256 oldValue, uint256 newValue);
+
+function setValue(uint256 _value) external {
+    uint256 old = _getStorage().value;
+    _getStorage().value = _value;
+    emit ValueUpdated(msg.sender, old, _value);
+}
+```
+
+---
+
+## Slither Static Analysis
+
+Slither can be run in CI on contract changes. Configure false positive suppressions:
+
+```json
+{
+  "suppressions": [
+    {
+      "check": "reentrancy-eth",
+      "file": "contracts/MyContract.sol",
+      "function": "myFunction(uint256)",
+      "reason": "CEI pattern followed, nonReentrant guard present"
+    }
+  ]
+}
+```
 
 ## Contract Interaction with SDK
 
