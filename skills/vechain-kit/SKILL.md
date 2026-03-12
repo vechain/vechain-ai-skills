@@ -1,6 +1,6 @@
 ---
 name: vechain-kit
-description: Frontend dApp development with VeChain Kit and dapp-kit — React/Next.js, wallet connection, social login, smart accounts, hooks, components, theming, React Query patterns, and transaction UX.
+description: VeChain Kit and dapp-kit packages — installation, hooks, components, wallet connection, social login, smart accounts, theming, and Privy setup.
 allowed-tools: []
 license: MIT
 metadata:
@@ -19,17 +19,17 @@ metadata:
 
 ## Scope
 
-Use this Skill for frontend dApp development on VeChain:
+Use this Skill for the VeChain Kit and dapp-kit packages specifically:
 
-- VeChain Kit: full-featured React/Next.js dApp library
+- VeChain Kit: installation, setup, configuration, Privy integration
 - dapp-kit: lightweight wallet connection for non-React or minimal setups
 - Wallet connection, social login (email, Google, passkey), smart accounts
 - Pre-built UI components (WalletButton, TransactionModal)
 - Hooks (useWallet, useSendTransaction, useCallClause, token/domain/oracle hooks)
-- React Query caching, query keys, cache invalidation
-- Transaction UX, loading states, confirmation patterns
 - Theming and Privy setup
 - i18n with react-i18next: bi-directional language sync (Kit ↔ host app), pre-commit/ESLint for missing or unused translation keys
+
+For generic frontend patterns (React Query, Turborepo, state management, Chakra UI, transaction UX), see the **frontend** skill.
 
 ## Default stack
 
@@ -85,7 +85,10 @@ Read the matching files BEFORE doing anything else. See Critical Rules above.
 
 | Topic | File | Read when user mentions... |
 |-------|------|---------------------------|
-| VeChain Kit | [references/frontend-vechain-kit.md](references/frontend-vechain-kit.md) | VeChain Kit, useWallet, useSendTransaction, useCallClause, WalletButton, TransactionModal, social login, Privy, smart accounts, account abstraction, theming |
+| Setup & config | [references/kit-setup.md](references/kit-setup.md) | Installing VeChain Kit, provider setup, CSS framework, Tailwind, env vars, login methods, legal documents, ecosystem apps, common pitfalls |
+| Hooks | [references/kit-hooks.md](references/kit-hooks.md) | useWallet, useCallClause, useSendTransaction, useBuildTransaction, useSignMessage, contract reads, transactions, VET domains, NFTs, blockchain hooks, language/currency, @vechain/contract-getters |
+| Components & modals | [references/kit-components.md](references/kit-components.md) | WalletButton, TransactionModal, TransactionToast, modal hooks, isolated views |
+| Social login | [references/kit-social-login.md](references/kit-social-login.md) | Social login, smart accounts, account abstraction, Privy setup, fee delegation for social login, DIY social login |
+| Theming | [references/kit-theming.md](references/kit-theming.md) | Theming, colors, fonts, buttons, glass effects, bottom sheet, Chakra UI compatibility, webpack fallbacks |
 | dapp-kit | [references/frontend-dappkit.md](references/frontend-dappkit.md) | dapp-kit, DAppKitProvider, lightweight wallet |
-| Frontend patterns | [references/frontend.md](references/frontend.md) | frontend, React Query, caching, query keys, loading, skeleton, Turborepo, Chakra, i18n, state management |
 | Translations + Kit | [references/translations-vechain-kit.md](references/translations-vechain-kit.md) | i18n, translations, language sync, VeChain Kit language, missing translations, pre-commit, ESLint, unused keys |

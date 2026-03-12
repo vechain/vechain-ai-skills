@@ -35,8 +35,9 @@ Use this Skill for React Native dApp development integrating with VeWorld wallet
 
 For related topics, see companion skills:
 
-- **vechain-dev** — Core SDK usage, fee delegation, multi-clause patterns, dual-token model
-- **vechain-kit** — Web/React frontend dApps with VeChain Kit or dapp-kit
+- **vechain-core** — Core SDK usage, fee delegation, multi-clause patterns, dual-token model
+- **vechain-kit** — VeChain Kit and dapp-kit packages: hooks, components, wallet connection, social login
+- **frontend** — Generic frontend patterns: React Query, Turborepo, state management, Chakra UI
 - **smart-contract-development** — Solidity, Hardhat, testing, security
 
 ## Default stack

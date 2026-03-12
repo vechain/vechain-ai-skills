@@ -375,7 +375,7 @@ npx hardhat run scripts/deploy.ts --network vechain_mainnet
 
 ### Deploy with Fee Delegation
 
-Add a `delegate` config to the network. See [fee-delegation.md](fee-delegation.md) for full setup.
+Add a `delegate` config to the network. See the **vechain-core** skill (`references/fee-delegation.md`) for full setup.
 
 ## Contract Interaction with SDK
 

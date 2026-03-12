@@ -133,7 +133,7 @@ const [totalSupply, name, symbol, decimals, balance] = results;
 
 ## Frontend Multi-Clause with VeChain Kit (preferred)
 
-Pass an array of clauses to `useSendTransaction` (see [frontend-vechain-kit.md](frontend-vechain-kit.md) for full hook API):
+Pass an array of clauses to `useSendTransaction` (see the **vechain-kit** skill for the full hook API):
 
 ```tsx
 const { sendTransaction } = useSendTransaction({

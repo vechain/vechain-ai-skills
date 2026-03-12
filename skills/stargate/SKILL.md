@@ -59,3 +59,4 @@ Read the matching files BEFORE doing anything else. See Critical Rules above.
 | Topic | File | Read when user mentions... |
 |-------|------|---------------------------|
 | StarGate staking | [references/stargate-staking.md](references/stargate-staking.md) | staking, StarGate, validator, delegation, VTHO rewards, node tier, boosting, Node Manager |
+| Smart contracts | [references/contracts.md](references/contracts.md) | Contract functions, roles, Stargate, StargateNFT, ProtocolStaker, delegation status, effective stake, maturity, boost, token manager, mint, burn, migrate |
