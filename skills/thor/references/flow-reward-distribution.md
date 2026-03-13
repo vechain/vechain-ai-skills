@@ -73,7 +73,7 @@ curveFactor := Params.Get(KeyCurveFactor)       // governance parameter
 reward := curveFactor * sqrtStake / blocksPerYear
 ```
 
-The reward curve is **sublinear** — `reward ∝ √(totalStaked)`. This incentivizes broad participation rather than stake concentration.
+The reward curve is sublinear (`reward ∝ √(totalStaked)`), incentivizing broad participation rather than stake concentration.
 
 ### Validator vs Delegator Split
 

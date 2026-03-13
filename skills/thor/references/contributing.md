@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - **Go 1.25+** (enforced by Makefile version check)
-- **golangci-lint** — install from <https://golangci-lint.run/usage/install/>
+- `golangci-lint` — install from <https://golangci-lint.run/usage/install/>
 - **Docker** — needed for Solidity compilation (`builtin/gen`) and license checks
 - **GPG key** — all commits must be GPG-signed
 
