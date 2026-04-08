@@ -82,3 +82,4 @@ Read the matching files before doing anything else.
 | `LogsIndexer` vs `BlockIndexer` and factory choices | [references/mode-selection.md](references/mode-selection.md) | `LogsIndexer`, `BlockIndexer`, `includeFullBlock`, `dependsOn`, fast sync, full block access |
 | ABI events, business events, VET transfers, filtering | [references/event-pipeline.md](references/event-pipeline.md) | ABI, business events, `VET_TRANSFER`, event criteria, transfer criteria, classpath JSON |
 | Repo maintenance and migration | [references/maintenance-and-migration.md](references/maintenance-and-migration.md) | tests, formatting, docs authority, 7.x vs 8.x migration, `IndexingResult` renames |
+| Data modeling, BigDecimal, DECIMAL128, monetary fields | [references/data-modeling.md](references/data-modeling.md) | `BigDecimal`, `DECIMAL128`, token amounts, stake, balance, monetary fields, large numbers |
