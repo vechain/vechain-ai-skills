@@ -106,6 +106,16 @@ castNavigatorVote(proposalId, citizen):
   - Emits NavigatorGovernanceVoteCast(citizen, navigator, proposalId, support, weight, power)
 ```
 
+### getVotes Reflects Delegation
+
+`getVotes(account, timepoint)` on both governors subtracts the navigator-delegated amount, returning only undelegated voting power:
+- `GovernorVotesLogic.getVotes` — `VOT3.getPastVotes - navigatorRegistry.getDelegatedAmountAtTimepoint`
+- `VotesUtils.getVotes` (XAllocationVoting) — same subtraction via ExternalContractsStorage
+- `getQuadraticVotingPower` — calls `getVotes`, so returns `sqrt(undelegated) * 1e9`
+- `getTotalVotingPower` (XAllocationVoting) — cascades from `getVotes`
+- Returns full balance when `navigatorRegistry == address(0)`
+- **View-only**: actual `castVote` reads `getPastVotes` directly; delegated citizens already blocked; navigator votes use `getDelegatedAmountAtTimepoint`
+
 ### Relayer Integration
 
 #### Key design: citizens NOT counted in expected actions (Option B)
@@ -193,10 +203,30 @@ Process: 5 navigators lock stakes to trigger -> public findings within 4 rounds 
 ### Exit
 
 1. `announceExit()` — event emitted, **1 round notice** (governance-configurable)
-2. Navigator must continue voting during notice
-3. After notice: all delegations **auto-cease**
+2. **Lazy invalidation**: as soon as exit announced, all citizen delegations become void
+   - `isDelegated()` returns false, `getDelegatedAmount()` returns 0
+   - VOT3 transfer lock auto-releases (no citizen action needed)
+   - Citizens can directly re-delegate to new navigator (stale delegation auto-cleared)
+3. Navigator must continue voting during notice for citizens of that round
 4. `finalizeExit()` — stake available **immediately**, locked fees on their individual 4-round schedules
 5. Re-entry = fresh registration
+
+### Lazy Invalidation (Citizen UX)
+
+When a navigator exits or is deactivated, citizen delegations become void automatically at the view level:
+- `_isNavigatorDead()` checks `isDeactivated || exitAnnouncedRound > 0`
+- `getNavigator()`, `getDelegatedAmount()`, `isDelegated()` all return void values
+- `getDelegatedAmountAtTimepoint()` NOT affected (historical data preserved for rewards)
+- `delegate()` auto-clears stale delegation and emits `DelegationRemoved` when citizen re-delegates
+- Zero gas cost — no iteration over citizens needed
+
+### Contract-Level Protections
+
+- **Self-delegation blocked**: navigator cannot delegate to themselves (`SelfDelegationNotAllowed`)
+- **Citizens can't manual vote**: `castVote()` reverts with `DelegatedToNavigator` for delegated citizens
+- **Citizens can't manual vote on governance**: `GovernorVotesLogic.castVote()` also checks
+- **Navigators can't enable auto-voting**: `toggleAutoVoting()` reverts with `NavigatorCannotEnableAutoVoting`
+- **Delegated citizens can't enable auto-voting**: `toggleAutoVoting()` reverts with `DelegatedToNavigator`
 
 ## Key Contracts
 
@@ -229,8 +259,9 @@ Process: 5 navigators lock stakes to trigger -> public findings within 4 rounds 
 
 ### Modified contracts
 - `/packages/contracts/contracts/x-allocation-voting-governance/XAllocationVoting.sol` — castNavigatorVote, disableAutoVotingFor
+- `/packages/contracts/contracts/x-allocation-voting-governance/libraries/VotesUtils.sol` — getVotes subtracts navigator delegation
 - `/packages/contracts/contracts/governance/B3TRGovernor.sol` — castNavigatorVote
-- `/packages/contracts/contracts/governance/libraries/GovernorVotesLogic.sol` — castNavigatorVote logic
+- `/packages/contracts/contracts/governance/libraries/GovernorVotesLogic.sol` — castNavigatorVote logic, getVotes subtracts navigator delegation
 - `/packages/contracts/contracts/governance/libraries/GovernorStorageTypes.sol` — navigatorRegistry field
 - `/packages/contracts/contracts/governance/libraries/GovernorConfigurator.sol` — setNavigatorRegistry
 - `/packages/contracts/contracts/VoterRewards.sol` — navigator fee deduction, relayer fee for citizens
@@ -291,3 +322,11 @@ Process: 5 navigators lock stakes to trigger -> public findings within 4 rounds 
 43. CLAIM action registered for citizens at reward claim time (same as auto-voters)
 44. Permissionless registration (50,000 B3TR minimum stake)
 45. Major slash forfeits all unclaimed locked fees (`feesForfeited` flag)
+46. Lazy invalidation: citizen delegations auto-void when navigator exits/deactivated (view-level, zero gas)
+47. Citizens can re-delegate directly to new navigator without calling undelegate first (stale delegation auto-cleared)
+48. Self-delegation blocked: navigator cannot delegate to themselves (`SelfDelegationNotAllowed`)
+49. Delegated citizens cannot manual castVote (`DelegatedToNavigator` error)
+50. Navigators cannot enable auto-voting (`NavigatorCannotEnableAutoVoting`)
+51. Delegated citizens cannot enable auto-voting (`DelegatedToNavigator`)
+52. `getDelegatedAmountAtTimepoint` NOT affected by lazy invalidation (historical data preserved for rewards)
+53. `getVotes` subtracts navigator-delegated amount on both governors (view-only, castVote unaffected)
