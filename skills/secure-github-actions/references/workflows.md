@@ -13,20 +13,21 @@
 
 ## Pinning rules
 
-- Pin both step-level actions and job-level reusable workflows:
+Pin both step-level actions and job-level reusable workflows:
 
 ```yaml
-- uses: actions/checkout@<FULL_40_CHAR_SHA> # v4
+- uses: actions/checkout@<FULL_40_CHAR_SHA> # v4.3.1
 - uses: aquasecurity/trivy-action@<FULL_40_CHAR_SHA> # v0.28.0
 
 jobs:
   ci:
-    uses: owner/repo/.github/workflows/reusable.yml@<FULL_40_CHAR_SHA> # v1
+    uses: owner/repo/.github/workflows/reusable.yml@<FULL_40_CHAR_SHA> # v1.2.0
 ```
 
-- Do not leave mutable refs in place:
+Do not leave mutable refs in place:
 
 ```yaml
+# BAD
 - uses: actions/checkout@v4
 - uses: aquasecurity/trivy-action@main
 - uses: owner/repo/.github/workflows/reusable.yml@v1
@@ -53,13 +54,6 @@ permissions:
 ```
 
 - Grant write scopes only per job when required.
-- If `actions/checkout` is only reading code, set `persist-credentials: false`:
-
-```yaml
-- uses: actions/checkout@<FULL_40_CHAR_SHA> # v4
-  with:
-    persist-credentials: false
-```
 
 ## Shell injection safety
 
@@ -77,8 +71,7 @@ Good:
   run: echo "$PR_TITLE"
 ```
 
-- Apply the same pattern to `github.head_ref`, `github.ref_name`, `inputs.*`, `matrix.*`, and any value that can contain spaces or shell metacharacters.
-- Quote variables in shell and prefer small scripts over dense one-liners.
+Apply the same pattern to `github.head_ref`, `github.ref_name`, `inputs.*`, `matrix.*`, and any value that can contain spaces or shell metacharacters. Quote variables in shell and prefer small scripts over dense one-liners.
 
 ## Dependabot
 
@@ -93,8 +86,7 @@ updates:
       interval: weekly
 ```
 
-- Review updates before merging.
-- Keep the human version hint in comments when useful so reviewers can map a SHA back to a release.
+Review updates before merging. Keep the human version hint in comments so reviewers can map a SHA back to a release.
 
 ## Review prompts
 
@@ -102,6 +94,7 @@ When auditing workflows, actively search for:
 
 - `@v`, `@main`, `@master`, or short SHAs in any `uses:` line
 - `pull_request_target`
-- missing or overly broad `permissions:`
-- direct `${{ ... }}` interpolation inside `run:`
-- unnecessary third-party actions
+- Missing or overly broad `permissions:`
+- Direct `${{ ... }}` interpolation inside `run:`
+- `secrets: inherit` instead of explicit secrets
+- Unnecessary third-party actions
