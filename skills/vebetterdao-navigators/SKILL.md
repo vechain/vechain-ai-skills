@@ -1,5 +1,5 @@
 ---
-name: navigators
+name: vebetterdao-navigators
 description: "VeBetterDAO Navigators feature: rewards multipliers (freshness + governance intent) and navigator delegation system. Use when working on navigator contracts, delegation, staking, freshness multiplier, governance intent multiplier, navigator fees, slashing, or any navigator-related frontend/backend code. Triggers on: navigator, navigators, delegation, freshness multiplier, governance intent, navigator staking, navigator fee, slashing, NavigatorRegistry."
 allowed-tools: []
 license: MIT

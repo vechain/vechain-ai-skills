@@ -42,13 +42,14 @@ metadata:
 ---
 ```
 
-### Adding a New Skill
+### Adding or Renaming a Skill
 
 1. Create `skills/<skill-name>/SKILL.md` with frontmatter
-2. Optionally add `references/` directory for supplementary files
-3. Register in `.claude-plugin/plugin.json` skills array
-4. Register in `.claude-plugin/marketplace.json` plugins array (required for `/plugin install` to find the skill)
-5. Run `npm run validate` to verify structure
+2. **The `name` field in SKILL.md frontmatter MUST exactly match the directory name.** If you rename a directory, update the frontmatter `name` too. CI will fail on mismatch.
+3. Optionally add `references/` directory for supplementary files
+4. Register in `.claude-plugin/plugin.json` skills array (path must match directory)
+5. Register in `.claude-plugin/marketplace.json` plugins array (required for `/plugin install` to find the skill)
+6. Run `npm run validate` to verify structure
 
 **IMPORTANT:** A skill MUST be added to BOTH `plugin.json` AND `marketplace.json`. Missing `marketplace.json` means `/plugin install <name>` will return "not found".
 
