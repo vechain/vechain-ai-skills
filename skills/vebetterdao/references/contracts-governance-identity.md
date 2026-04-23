@@ -2,29 +2,44 @@
 
 ## When to use
 
-Use when the user asks about: B3TRGovernor, proposals, VoterRewards, GalaxyMember, Treasury, TimeLock, RelayerRewardsPool, GrantsManager, B3TRMultiSig, VeBetterPassport, signaling, entity linking, delegation, contract upgradeability, or UUPS proxy pattern.
+Use when the user asks about: B3TRGovernor, proposals, VoterRewards, GalaxyMember, Treasury, TimeLock, RelayerRewardsPool, NavigatorRegistry, GrantsManager, B3TRMultiSig, VeBetterPassport, signaling, entity linking, delegation, contract upgradeability, or UUPS proxy pattern.
 
 Full source: [github.com/vechain/vebetterdao-contracts](https://github.com/vechain/vebetterdao-contracts)
 Auto-generated docs: [vechain.github.io/vebetterdao-contracts](https://vechain.github.io/vebetterdao-contracts/)
 
 ---
 
-## B3TRGovernor
+## B3TRGovernor (V10)
 
-Main governance contract. Community creates proposals, deposits VOT3, votes with quadratic voting, and executes through TimeLock.
+Main governance contract. Community creates proposals, deposits VOT3, votes with quadratic voting, and executes through TimeLock. V10 added navigator governance voting and relayer integration.
 
 | Function | Description |
 |----------|-------------|
 | `propose(...)` | Create proposal with deposit requirement and start round |
 | `deposit(proposalId, amount)` | Contribute VOT3 to activate proposal |
-| `castVote(proposalId, support)` | Vote: 0=against, 1=for, 2=abstain |
+| `castVote(proposalId, support)` | Vote: 0=against, 1=for, 2=abstain. Reverts with `DelegatedToNavigator` for delegated citizens |
 | `castVoteWithReason(proposalId, support, reason)` | Vote with reason string |
+| `castNavigatorVote(proposalId, citizen)` | Vote-or-skip for navigator-delegated citizens. Maps navigator decision (1=Against, 2=For, 3=Abstain) to governor support. Registers `RelayerAction.VOTE` in RelayerRewardsPool. Applies intent multiplier |
+| `getActiveProposals()` | Returns active proposal IDs (filtered from `proposalsForRound` mapping) |
 | `queue(proposalId)` | Prepare approved proposal for execution |
 | `execute(proposalId)` | Execute via TimeLock |
 | `cancel(proposalId)` | Cancel proposal |
 | `withdraw(proposalId)` | Recover deposits after voting |
 | `getQuadraticVotingPower(account, timepoint)` | Quadratic voting power |
 | `toggleQuadraticVoting(roundId)` | Enable/disable per round |
+| `setNavigatorRegistry(address)` | Set NavigatorRegistry address |
+| `setRelayerRewardsPool(address)` | Set RelayerRewardsPool address |
+
+**V10 storage:** `INavigatorRegistry navigatorRegistry`, `IRelayerRewardsPool relayerRewardsPool`, `mapping(uint256 => uint256[]) proposalsForRound` (populated at proposal creation).
+
+**V10 events:** `NavigatorGovernanceVoteCast`, `NavigatorGovernanceVoteSkipped`.
+
+**V10 `castNavigatorVote` skip-or-vote flow:**
+1. Navigator dead at snapshot → revert `NotDelegatedToNavigator`
+2. Navigator dead NOW → skip via `pool.reduceUserGovernanceVote`, emit `NavigatorGovernanceVoteSkipped`
+3. Navigator alive + decision set → vote normally
+4. Navigator alive + no decision + skip window (720 blocks before deadline) → skip
+5. Navigator alive + no decision + skip window not reached → revert `GovernanceSkipWindowNotReached`
 
 Proposal types: `STANDARD` (0) and `GRANT` (1) with type-specific thresholds.
 
@@ -35,29 +50,39 @@ Proposal types: `STANDARD` (0) and `GRANT` (1) with type-specific thresholds.
 | `PROPOSAL_STATE_MANAGER_ROLE` | Track proposal development |
 | `PAUSER_ROLE` | Pause contract |
 
-Integrates with VeBetterPassport for voter identity verification.
+Integrates with VeBetterPassport for voter identity verification. Logic stored in external libraries (GovernorClockLogic, GovernorConfigurator, GovernorDepositLogic, GovernorFunctionRestrictionsLogic, GovernorProposalLogic, GovernorQuorumLogic, GovernorStateLogic, GovernorVotesLogic).
 
-## VoterRewards
+## VoterRewards (V7)
 
-Calculates and distributes rewards to voters based on voting power and Galaxy Member NFT levels.
+Calculates and distributes rewards to voters based on voting power and Galaxy Member NFT levels. V7 added rewards multipliers (freshness + governance intent) and navigator fee deduction.
 
 | Function | Description |
 |----------|-------------|
 | `registerVote(voter, votingPower, roundId)` | Records vote with quadratic-weight calculation |
-| `claimReward(cycle, voter)` | Claim cycle-specific rewards |
+| `claimReward(cycle, voter)` | Claim cycle-specific rewards. Deducts navigator fee (citizens) then relayer fee (auto-voters + citizens) |
 | `getReward(cycle, voter)` | View base reward amount |
 | `getGMReward(cycle, voter)` | View GM bonus reward |
-| `getRelayerFee(cycle, voter)` | Relayer fee for auto-voting claims |
+| `getRelayerFee(cycle, voter)` | Relayer fee for auto-voting/citizen claims |
+| `getNavigatorFee(cycle, voter)` | Navigator fee for citizen claims (V7) |
+| `getFreshnessMultipliers(timepoint)` | Returns tier1, tier2, tier3 freshness multiplier values (V7) |
+| `getIntentMultipliers(timepoint)` | Returns forAgainst, abstain intent multiplier values (V7) |
+| `setFreshnessMultipliers(tier1, tier2, tier3)` | Governance setter for freshness tiers (V7) |
+| `setIntentMultipliers(forAgainst, abstain)` | Governance setter for intent values (V7) |
 | `setLevelToMultiplier(level, multiplier)` | Queue multiplier change for next cycle |
 | `setLevelToMultiplierNow(level, multiplier)` | Apply multiplier immediately |
 | `toggleQuadraticRewarding(cycle)` | Enable/disable quadratic rewarding |
+
+**V7 storage:** 5 `Checkpoints.Trace208` for multiplier values (freshnessMultiplierTier1/2/3, intentMultiplierForAgainst, intentMultiplierAbstain), `INavigatorRegistry navigatorRegistry`.
+
+**V7 fee flow:** Navigator fee deducted first from gross reward (citizens only, → NavigatorRegistry escrow), then relayer fee from remainder (auto-voters + citizens, → RelayerRewardsPool). CLAIM action registered for both.
 
 | Role | Can |
 |------|-----|
 | `VOTE_REGISTRAR_ROLE` | Register votes |
 | `DEFAULT_ADMIN_ROLE` | Set multipliers, scaling |
+| `GOVERNANCE_ROLE` | Set freshness/intent multipliers (V7) |
 
-Separate GM rewards pool (v5+). Relayer fee integration (v6).
+Separate GM rewards pool (v5+). Relayer fee integration (v6). Navigator fees + multipliers (v7).
 
 ## GalaxyMember (NFT)
 
@@ -107,9 +132,9 @@ All transfers require `GOVERNANCE_ROLE` and contract must be unpaused.
 
 Executes governance actions from B3TRGovernor with a mandatory time delay. B3TRGovernor should be the sole proposer and executor.
 
-## RelayerRewardsPool
+## RelayerRewardsPool (V3)
 
-Manages rewards for relayers performing auto-voting on behalf of users.
+Manages rewards for relayers performing auto-voting and navigator citizen voting. V3 added per-user skip tracking and governance action support.
 
 | Function | Description |
 |----------|-------------|
@@ -117,14 +142,53 @@ Manages rewards for relayers performing auto-voting on behalf of users.
 | `deposit(amount, roundId)` | Fund the pool |
 | `registerRelayerAction(relayer, voter, roundId, action)` | Log vote/claim action |
 | `calculateRelayerFee(totalReward)` | Compute fee deduction |
+| `setTotalActionsForRound(roundId, userCount)` | Legacy: sets expected for auto-voting only |
+| `setTotalActionsForRoundWithGovernance(roundId, allocationUsers, governanceUsers, activeProposalIds)` | V3: sets expected actions with separate governance users. Caches activeProposalIds |
+| `reduceExpectedActionsForRound(roundId, userCount)` | Bulk reduction for ineligible auto-voting users |
+| `reduceUserAllocationVote(roundId, user)` | V3: per-user allocation skip. Auto-reduces claim if all votes skipped |
+| `reduceUserGovernanceVote(roundId, user, proposalId)` | V3: per-user/proposal governance skip. Auto-reduces claim if all votes skipped |
 | `setVoteWeight()` / `setClaimWeight()` | Adjust action weights |
 | `setRelayerFeePercentage()` / `setFeeCap()` | Configure fee structure |
 | `setEarlyAccessBlocks()` | Define early access window |
 | `registerRelayer(relayer)` / `unregisterRelayer(relayer)` | Manage relayer access |
 
+**V3 storage:** `activeProposalsForRound[roundId]`, `userAllocationVoteReduced[roundId][user]`, `userGovernanceVoteReduced[roundId][user][proposalId]`, `userClaimReduced[roundId][user]`.
+
 | Role | Can |
 |------|-----|
 | `POOL_ADMIN_ROLE` | Pool administration, relayer management |
+
+## NavigatorRegistry (V1)
+
+UUPS upgradeable contract managing navigator registration, citizen delegation, voting preferences, fees, slashing, and lifecycle. Facade with 6 external libraries.
+
+| Function | Description |
+|----------|-------------|
+| `register(amount, metadataURI)` | Register as navigator by staking B3TR (min 50K) |
+| `addStake(amount)` / `reduceStake(amount)` | Manage B3TR stake |
+| `withdrawStake(amount)` | Withdraw after exit/deactivation |
+| `delegate(navigator, amount)` | Delegate VOT3 to navigator |
+| `increaseDelegation(amount)` | Add more VOT3 |
+| `reduceDelegation(amount)` / `undelegate()` | Reduce or remove delegation |
+| `setAllocationPreferences(roundId, appIds, percentages)` | Set allocation vote preferences (basis points, sum to 10000) |
+| `setGovernanceDecision(proposalId, decision)` | Set governance vote (1=Against, 2=For, 3=Abstain) |
+| `submitReport(metadataURI)` | Submit on-chain report for current round |
+| `announceExit()` | Start exit with 1-round notice |
+| `reportRoundInfractions(navigator, roundId, proposalIds)` | Report minor infractions for completed round |
+| `claimFee(roundId)` | Claim navigator fee after 4-round lock |
+| `depositNavigatorFee(navigator, roundId, amount)` | Called by VoterRewards to deposit citizen fee |
+| `deactivateNavigator(navigator, slashPct, slashFees)` | Governance action: deactivate + optional slash |
+| `getTotalDelegatedCitizensAtTimepoint(timepoint)` | Historical total citizen count |
+| `getDelegatedAmountAtTimepoint(citizen, timepoint)` | Historical delegation amount |
+
+**Storage:** `Checkpoints.Trace208 totalDelegatedCitizens`, `mapping(address => uint256) navigatorCitizenCount`, fee escrow per navigator per round.
+
+**Libraries:** NavigatorStakingUtils, NavigatorDelegationUtils, NavigatorVotingUtils, NavigatorFeeUtils, NavigatorSlashingUtils, NavigatorLifecycleUtils.
+
+| Role | Can |
+|------|-----|
+| `DEFAULT_ADMIN_ROLE` | Configuration |
+| `GOVERNANCE_ROLE` | Deactivation, parameter changes |
 
 ## GrantsManager
 
@@ -258,5 +322,6 @@ All upgradeable contracts use **UUPS proxy pattern** with ERC-7201 storage layou
 | DBAPool | Yes | UPGRADER_ROLE |
 | RelayerRewardsPool | Yes | UPGRADER_ROLE |
 | VeBetterPassport | Yes | UPGRADER_ROLE |
+| NavigatorRegistry | Yes | UPGRADER_ROLE |
 
-B3TRGovernor stores logic in external libraries (GovernorClockLogic, GovernorConfigurator, GovernorDepositLogic, GovernorFunctionRestrictionsLogic, GovernorProposalLogic, GovernorQuorumLogic, GovernorStateLogic, GovernorVotesLogic). To upgrade library logic: deploy new library → deploy new implementation linking the library → `upgradeToAndCall`.
+B3TRGovernor and NavigatorRegistry store logic in external libraries. To upgrade library logic: deploy new library → deploy new implementation linking the library → `upgradeToAndCall`.

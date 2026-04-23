@@ -1,11 +1,11 @@
 ---
 name: auto-voting-relayers
-description: "Complete domain knowledge for VeBetterDAO's auto-voting and relayer system. Use when working on relayer dashboard, relayer node, auto-voting contracts (XAllocationVoting, VoterRewards, RelayerRewardsPool), or anything related to relayers, auto-voting, gasless voting, or relayer rewards. Triggers on: relayer, auto-voting, autovoting, gasless voting, relayer rewards, RelayerRewardsPool, castVoteOnBehalfOf, relayer dashboard, relayer node, veDelegate comparison."
+description: "Complete domain knowledge for VeBetterDAO's auto-voting and relayer system. Use when working on relayer dashboard, relayer node, auto-voting contracts (XAllocationVoting, VoterRewards, RelayerRewardsPool), or anything related to relayers, auto-voting, gasless voting, or relayer rewards. Triggers on: relayer, auto-voting, autovoting, gasless voting, relayer rewards, RelayerRewardsPool, castVoteOnBehalfOf, castNavigatorVote, relayer dashboard, relayer node, veDelegate comparison."
 allowed-tools: []
 license: MIT
 metadata:
   author: VeChain
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # VeBetterDAO Auto-Voting & Relayer System
@@ -16,23 +16,27 @@ Complete domain knowledge for the auto-voting and relayer ecosystem. This skill 
 
 VeBetterDAO's auto-voting system lets users automate their weekly X Allocation voting. Users pick favorite apps once, toggle auto-voting on, and relayers (off-chain services) handle the rest: casting votes, claiming rewards, all gasless. Relayers earn a fee from the reward pool. Tokens never leave the user's wallet.
 
-Auto-voting applies **only to X Allocation rounds**. Governance proposals remain manual-only.
+With the Navigators feature, relayers also serve **navigator-delegated citizens** — voting allocation rounds AND governance proposals on their behalf. Citizens are fully counted in expected actions alongside auto-voting users.
 
 ## Architecture
 
 ```text
 Users (toggle auto-voting, set preferences)
+Citizens (delegate VOT3 to a navigator)
     |
     v
 Smart Contracts (on-chain logic)
-    - XAllocationVoting (v8): auto-voting state, vote execution
-    - VoterRewards (v6): reward claiming, fee deduction
-    - RelayerRewardsPool (v1): relayer registration, reward distribution
+    - XAllocationVoting (v9): auto-voting state, vote execution, castNavigatorVote
+    - B3TRGovernor (v10): governance castNavigatorVote, getActiveProposals
+    - VoterRewards (v7): reward claiming, fee deduction (relayer + navigator fees)
+    - RelayerRewardsPool (v3): relayer registration, reward distribution, per-user skip tracking
+    - NavigatorRegistry: delegation state, preferences, governance decisions
     |
     v
 Relayer Nodes (off-chain execution)
     - relayer-node/ (standalone CLI, no monorepo dependency)
     - Monitor rounds, batch vote/claim, loop every 5 min
+    - Serve both auto-voting users and navigator citizens
     |
     v
 Relayer Dashboard (monitoring/analytics)
@@ -42,7 +46,7 @@ Relayer Dashboard (monitoring/analytics)
 
 ## How It Works (Non-Technical)
 
-### For Users
+### For Users (Auto-Voting)
 
 1. Hold 1+ VOT3, complete 3+ sustainable actions, pass VeBetterPassport
 2. Choose up to 15 apps, toggle auto-voting on
@@ -52,7 +56,16 @@ Relayer Dashboard (monitoring/analytics)
 6. While active: no manual voting/claiming allowed
 7. Manual claim fallback: available 5 days after round end if relayer hasn't processed
 
-### Auto-Disable Triggers
+### For Citizens (Navigator Delegation)
+
+1. Delegate specific VOT3 amount to a navigator
+2. Auto-voting is automatically disabled on delegation
+3. Relayer votes allocation rounds using navigator's app preferences
+4. Relayer votes governance proposals using navigator's decision (For/Against/Abstain)
+5. Relayer claims rewards — navigator fee deducted first, then relayer fee
+6. Citizen receives remaining reward to wallet
+
+### Auto-Disable Triggers (Auto-Voting)
 
 - VOT3 drops below 1
 - All selected apps become ineligible
@@ -63,10 +76,10 @@ Relayer Dashboard (monitoring/analytics)
 
 1. Register on-chain by calling registerRelayer() on RelayerRewardsPool (open to anyone)
 2. Run relayer-node with wallet (MNEMONIC or RELAYER_PRIVATE_KEY)
-3. Node auto-discovers users, batches votes + claims
-4. Earn weighted points: vote = 3 pts, claim = 1 pt
-5. After ALL users served, claim proportional share of reward pool
-6. All-or-nothing: if any user missed, nobody gets paid
+3. Node auto-discovers auto-voting users AND navigator citizens
+4. Earn weighted points: vote = 3 pts, claim = 1 pt (for both auto-voting and citizen votes)
+5. Governance votes for citizens also earn vote weight (3 pts each)
+6. After ALL expected actions completed (or skipped), claim proportional share of reward pool
 
 ### Apps as Relayers
 
@@ -77,7 +90,7 @@ Apps can register as relayers, ask users to set them as preference, and run a no
 | Feature | veDelegate | VeBetterDAO Auto-Voting |
 | --- | --- | --- |
 | X Allocation voting | Yes | Yes |
-| Governance voting | Yes (always "abstain") | No (manual only) |
+| Governance voting | Yes (always "abstain") | Yes (citizens: navigator's decision) |
 | Compounding (B3TR->VOT3) | Auto | Manual |
 | Token custody | Leaves wallet | Stays in wallet |
 | Centralization | Single entity | Many relayers |
@@ -87,22 +100,25 @@ veDelegate: docs.vedelegate.vet / github.com/vechain-energy/vedelegate-for-dapps
 
 ## Smart Contracts Detail
 
-### XAllocationVoting.sol (v8)
+### XAllocationVoting.sol (v9)
 
-Auto-voting added in v8 via `AutoVotingLogicUpgradeable` module.
+Auto-voting added in v8, navigator voting added in v9. Now uses external library architecture.
 
-**Storage** (in AutoVotingLogic library):
+**Storage** (in AutoVotingLogic / XAllocationVotingStorageTypes):
 
 - `_autoVotingEnabled`: Checkpointed per-user status (changes take effect next round)
 - `_userVotingPreferences`: Array of app IDs per user (max 15, validated, no duplicates)
 - `_totalAutoVotingUsers`: Checkpointed total count
+- `navigatorRegistry`: INavigatorRegistry reference (V9)
 
 **Key functions:**
 
 ```solidity
 toggleAutoVoting(address user)                         // Enable/disable
 setUserVotingPreferences(bytes32[] memory appIds)      // Set apps (1-15)
-castVoteOnBehalfOf(address voter, uint256 roundId)     // Relayer executes vote
+castVoteOnBehalfOf(address voter, uint256 roundId)     // Relayer executes auto-vote
+castNavigatorVote(address citizen, uint256 roundId)    // Relayer executes citizen vote (vote-or-skip)
+disableAutoVotingFor(address user)                     // Privileged, called by NavigatorRegistry on delegation
 getUserVotingPreferences(address)                      // View preferences
 isUserAutoVotingEnabled(address)                       // Current status
 isUserAutoVotingEnabledForRound(address, uint256)      // Status at round snapshot
@@ -110,7 +126,7 @@ getTotalAutoVotingUsersAtRoundStart()                  // Count at last emission
 getTotalAutoVotingUsersAtTimepoint(uint48)             // Historical count
 ```
 
-**Vote execution** (`castVoteOnBehalfOf`):
+**Vote execution** (`castVoteOnBehalfOf` — auto-voting users):
 
 1. Validate early access (registered relayer during window)
 2. Get user preferences, filter eligible apps
@@ -118,31 +134,77 @@ getTotalAutoVotingUsersAtTimepoint(uint48)             // Historical count
 4. Cast via internal `_countVote()`
 5. Register VOTE action on RelayerRewardsPool (3 weight points)
 
-### VoterRewards.sol (v6)
+**Navigator vote execution** (`castNavigatorVote` — citizens):
 
-V6 added relayer fee integration. Fee deduction happens HERE during `claimReward()`.
+Skip-or-vote decision flow (merged into the function, no separate skip call):
 
-**V6 storage:** `xAllocationVoting`, `relayerRewardsPool`
+1. Navigator dead at snapshot → revert `NotDelegatedToNavigator`
+2. Navigator dead NOW (exited/deactivated after snapshot) → skip via `pool.reduceUserAllocationVote`, emit `NavigatorVoteSkipped`
+3. Navigator alive + preferences set → vote normally using navigator's custom percentages (basis points, must sum to 10000), register `RelayerAction.VOTE`
+4. Navigator alive + no preferences + skip window reached → skip, emit `NavigatorVoteSkipped`
+5. Navigator alive + no preferences + skip window NOT reached → revert `SkipWindowNotReached`
+
+Skip window: `CITIZEN_SKIP_WINDOW_BLOCKS = 720` (~2 hours before round deadline)
+
+**`startNewRound()` — expected actions setup:**
+
+Computes expected actions for the round:
+- `allocationUsers = autoVotingUsers + totalDelegatedCitizens`
+- `governanceUsers = totalDelegatedCitizens` (citizens only — relayers don't cast governance for auto-users)
+- Fetches `governor.getActiveProposals()`
+- Calls `pool.setTotalActionsForRoundWithGovernance(roundId, allocationUsers, governanceUsers, activeProposals)`
+
+### B3TRGovernor.sol (v10)
+
+V10 added navigator governance voting and relayer integration.
+
+**`castNavigatorVote(proposalId, citizen)` — citizens governance vote:**
+
+Same skip-or-vote pattern as XAllocationVoting:
+
+1. Navigator dead at snapshot → revert `NotDelegatedToNavigator`
+2. Navigator dead NOW → skip via `pool.reduceUserGovernanceVote`, emit `NavigatorGovernanceVoteSkipped`
+3. Navigator alive + decision set → vote normally, register `RelayerAction.VOTE` in RelayerRewardsPool
+4. Navigator alive + no decision + skip window reached → skip, emit `NavigatorGovernanceVoteSkipped`
+5. Navigator alive + no decision + skip window NOT reached → revert `GovernanceSkipWindowNotReached`
+
+Skip window: `GOVERNANCE_SKIP_WINDOW_BLOCKS = 720` (~2 hours before proposal deadline)
+
+Maps navigator decision: 1=Against, 2=For, 3=Abstain → governor support 0, 1, 2.
+Applies intent multiplier for rewards.
+
+**`getActiveProposals()`** — returns currently active proposal IDs (filtered from `proposalsForRound` mapping, populated at proposal creation time). Used by `XAllocationVoting.startNewRound` to compute governance expected actions.
+
+### VoterRewards.sol (v7)
+
+V6 added relayer fee integration. V7 added navigator fee deduction and rewards multipliers.
+
+**V7 storage additions:** `navigatorRegistry`
 
 **Fee flow in `claimReward(uint256 cycle, address voter)`:**
 
-1. Check user had auto-voting at round start (checkpointed)
+1. Check user had auto-voting OR delegation at round start (checkpointed)
 2. Calculate raw rewards (voting + GM reward)
-3. If auto-voting: `fee = min(totalReward * 10/100, 100 B3TR)`
-4. Fee proportionally split between voting and GM reward
-5. Fee approved + deposited to `RelayerRewardsPool.deposit(fee, cycle)`
-6. `registerRelayerAction(msg.sender, voter, cycle, CLAIM)` - credits caller with 1 weight point
-7. Net reward transferred to voter wallet
+3. If citizen (delegated): deduct navigator fee first from gross reward → deposit to NavigatorRegistry fee escrow
+4. If auto-voting OR delegated: deduct relayer fee from remainder → `RelayerRewardsPool.deposit(fee, cycle)`
+5. `registerRelayerAction(msg.sender, voter, cycle, CLAIM)` — credits caller with 1 weight point
+6. Net reward transferred to voter wallet
+
+**Fee formula:**
+```
+Navigator fee = gross * navigatorFeePercentage / 10000 (citizens only, goes to NavigatorRegistry escrow)
+Relayer fee = min((gross - navigatorFee) * relayerFeePercentage / 100, feeCap) (auto-voters AND citizens)
+```
 
 **Important:** `msg.sender` calling `claimReward()` IS the relayer credited for CLAIM action.
 
-**Early access:** During window, `validateClaimDuringEarlyAccess()` reverts if caller is the voter or not a registered relayer.
+**Early access:** During window, reverts if caller is the voter or not a registered relayer. Applies to both auto-voters and citizens.
 
-### RelayerRewardsPool.sol (v1)
+### RelayerRewardsPool.sol (v3)
 
-Manages registration, action tracking, reward distribution.
+Manages registration, action tracking, reward distribution, per-user skip tracking.
 
-**Storage:**
+**Core storage:**
 
 ```text
 totalRewards[roundId]                    // Pool amount (funded by fees)
@@ -158,6 +220,15 @@ relayerFeePercentage = 10               // 10%
 feeCap = 100 ether                       // 100 B3TR
 ```
 
+**V3 storage additions:**
+
+```text
+activeProposalsForRound[roundId]                      // Cached governance proposal IDs
+userAllocationVoteReduced[roundId][user]               // Per-user allocation skip flag
+userGovernanceVoteReduced[roundId][user][proposalId]   // Per-user/proposal governance skip flag
+userClaimReduced[roundId][user]                        // Per-user claim auto-reduction flag
+```
+
 **Reward formula:**
 
 ```text
@@ -168,15 +239,29 @@ relayerShare = (relayerWeightedActions / completedWeightedActions) * totalReward
 
 - Round ended (`emissions.isCycleEnded(roundId)`)
 - All work done (`completedWeightedActions >= totalWeightedActions`)
+- Per-user skips auto-reduce totalWeightedActions, so skipped citizens don't block claimability
 
 **Registration (open to anyone):**
 
-- `registerRelayer()` — self-registration, callable by anyone
+- `registerRelayer()` — self-registration
 - `unregisterRelayer(address)` — callable by admin or the relayer itself
-- `setTotalActionsForRound(roundId, userCount)` - sets expected = userCount x 2 actions, userCount x 4 weighted
-- `reduceExpectedActionsForRound(roundId, userCount)` - for ineligible users
-- `registerRelayerAction(relayer, voter, roundId, action)` - record work
-- `deposit(amount, roundId)` - fund pool
+
+**Expected actions setup:**
+
+- `setTotalActionsForRound(roundId, userCount)` — legacy, delegates to `setTotalActionsForRoundWithGovernance` with governanceUsers=0
+- `setTotalActionsForRoundWithGovernance(roundId, allocationUsers, governanceUsers, activeProposalIds)` — V3: sets expected actions. Total = `allocationUsers * 2` (vote+claim) + `governanceUsers * activeProposals` (governance votes). Caches activeProposalIds
+
+**Action reduction:**
+
+- `reduceExpectedActionsForRound(roundId, userCount)` — bulk reduction for ineligible auto-voting users
+- `reduceUserAllocationVote(roundId, user)` — per-user allocation skip. If all votes for user are skipped, auto-reduces claim
+- `reduceUserGovernanceVote(roundId, user, proposalId)` — per-user/proposal governance skip. Same auto-reduce logic
+- Double-skip prevention: reverts if already reduced for same user/round/proposal
+
+**Action registration:**
+
+- `registerRelayerAction(relayer, voter, roundId, action)` — records vote or claim work
+- `deposit(amount, roundId)` — funds pool from fee deductions
 
 **Early access:**
 
@@ -185,23 +270,110 @@ relayerShare = (relayerWeightedActions / completedWeightedActions) * totalReward
 - During: only registered relayers, user can't self-act
 - After: anyone can act
 
-## Auto-Voting Lifecycle (Per Round)
+## Relayer Lifecycle (Per Round)
 
 ```text
-Round N: User enables auto-voting + sets preferences (checkpointed)
+Round N: Users enable auto-voting / citizens delegate to navigators (checkpointed)
 Round N+1:
-  1. startNewRound() - snapshot locks auto-voting status
-  2. setTotalActionsForRound(roundId, userCount)
-  3. Relayers call castVoteOnBehalfOf() for each user
-     - Ineligible users: reduceExpectedActionsForRound()
-     - Each successful vote: +3 weighted points to relayer
+  1. startNewRound() - snapshot locks status
+     - allocationUsers = autoVotingUsers + totalDelegatedCitizens
+     - governanceUsers = totalDelegatedCitizens
+     - fetches activeProposals from B3TRGovernor
+     - calls setTotalActionsForRoundWithGovernance(roundId, allocationUsers, governanceUsers, activeProposals)
+
+  2. ALLOCATION VOTING:
+     a. Relayers call castVoteOnBehalfOf(voter, roundId) for auto-voting users
+        - Ineligible users: reduceExpectedActionsForRound()
+        - Each successful vote: +3 weighted points
+     b. Relayers call castNavigatorVote(citizen, roundId) for citizens
+        - Navigator dead/no-prefs + skip window reached: skip (reduceUserAllocationVote)
+        - Navigator alive + prefs set: vote, +3 weighted points
+
+  3. GOVERNANCE VOTING (concurrent with allocation):
+     For each active proposal:
+       Relayers call B3TRGovernor.castNavigatorVote(proposalId, citizen) for each citizen
+       - Navigator dead/no-decision + skip window reached: skip (reduceUserGovernanceVote)
+       - Navigator alive + decision set: vote, +3 weighted points
+
   4. Round ends (deadline block)
-  5. Relayers call VoterRewards.claimReward() for each user
-     - Fee deducted and deposited to pool
-     - Each successful claim: +1 weighted point to relayer
-  6. All actions complete -> pool unlocked
-  7. Relayers call RelayerRewardsPool.claimRewards()
+
+  5. CLAIMS:
+     Relayers call VoterRewards.claimReward(cycle, user) for auto-voters and citizens
+     - Navigator fee deducted first (citizens only), then relayer fee
+     - Each successful claim: +1 weighted point
+     - If all votes for a citizen were skipped, claim is auto-reduced (no claim needed)
+
+  6. All expected actions completed (or reduced via skips) -> pool unlocks
+  7. Relayers call RelayerRewardsPool.claimRewards(roundId)
 ```
+
+## Navigator Citizen Integration
+
+Relayers serve navigator-delegated citizens **in addition to** auto-voting users. This is ADDITIVE on top of existing auto-voting logic.
+
+### Key differences from auto-voting
+
+| Aspect | Auto-Voting Users | Navigator Citizens |
+| --- | --- | --- |
+| Vote function (allocation) | `castVoteOnBehalfOf(voter, roundId)` | `castNavigatorVote(citizen, roundId)` |
+| Vote function (governance) | N/A | `B3TRGovernor.castNavigatorVote(proposalId, citizen)` |
+| Discovery | `AutoVotingToggled` events | `DelegationCreated/Removed` events |
+| Preferences | User's own app list (equal split) | Navigator's `AllocationPreferencesSet` (custom %) |
+| Governance | Not applicable | Navigator's `GovernanceDecisionSet` |
+| Voting power | Full VOT3 balance at snapshot | Delegated amount at snapshot (checkpointed) |
+| Personhood check | Yes | No |
+| In expected actions? | Yes (allocation only) | Yes (allocation + governance) |
+| Skip mechanism | `reduceExpectedActionsForRound` (bulk) | Per-user skip with skip window |
+| Claim function | `claimReward(cycle, voter)` | Same — `claimReward(cycle, citizen)` |
+| Fees at claim | Relayer fee only | Navigator fee first, then relayer fee |
+
+### Citizens in expected actions
+
+Citizens ARE counted in expected actions. At round start:
+- `allocationUsers = autoVotingUsers + totalDelegatedCitizens` (for allocation vote + claim)
+- `governanceUsers = totalDelegatedCitizens` (for governance votes — citizens only, NOT auto-voters)
+- `governanceUsers` is separate because relayers don't cast governance votes for auto-voting users
+
+The **skip window** (720 blocks / ~2 hours before deadline) + **per-user skip tracking** prevent deadlock: if a navigator fails to set preferences, relayers can skip that citizen's votes once the skip window opens, reducing expected actions proportionally.
+
+### Skip-or-vote flow (both allocation and governance)
+
+`castNavigatorVote` handles vote and skip in a single function:
+
+1. Navigator dead at snapshot → revert (citizen not delegated at snapshot)
+2. Navigator dead NOW (exited/deactivated since snapshot) → skip immediately, reduce expected actions
+3. Navigator alive + preferences/decision set → vote normally
+4. Navigator alive + no preferences/decision + skip window reached → skip
+5. Navigator alive + no preferences/decision + skip window NOT reached → revert `SkipWindowNotReached` / `GovernanceSkipWindowNotReached` (relayer retries later)
+
+### Per-user skip tracking
+
+When a citizen's vote is skipped:
+- Allocation: `reduceUserAllocationVote(roundId, citizen)` — decrements expected actions
+- Governance: `reduceUserGovernanceVote(roundId, citizen, proposalId)` — per-proposal decrement
+- When ALL votes for a citizen are skipped (allocation + all governance proposals), the claim action is auto-reduced
+- Each skip is per-user, per-round, per-proposal — prevents double-reduction
+
+### Governance vote registration
+
+`B3TRGovernor.castNavigatorVote` registers `RelayerAction.VOTE` in RelayerRewardsPool for each governance vote. Relayers earn the same 3 weight points per governance vote as per allocation vote.
+
+### Fee ordering for citizens
+
+1. Navigator fee: deducted from gross reward (goes to NavigatorRegistry fee escrow)
+2. Relayer fee: deducted from remainder (same % and cap as auto-voting, goes to RelayerRewardsPool)
+3. Citizen receives the rest
+
+### Auto-voting disabled on delegation
+
+When a user delegates to a navigator, their auto-voting is automatically disabled via `XAllocationVoting.disableAutoVotingFor(citizen)`. Prevents double-counting and conflicting vote paths. On undelegate, user must re-enable auto-voting manually.
+
+### Preferred relayer
+
+- Citizens set `preferredRelayer` manually via `relayerRewardsPool.setPreferredRelayer(relayer)`
+- During early access, only the preferred relayer (if set and registered) can act on the citizen's behalf
+- **No auto-setting on delegation** — citizens must set it manually
+- Citizens can override or clear anytime
 
 ## Relayer Node (relayer-node/)
 
@@ -221,7 +393,7 @@ relayer-node/src/
 
 **Env vars:** `MNEMONIC` / `RELAYER_PRIVATE_KEY`, `RELAYER_NETWORK`, `RUN_ONCE`, `DRY_RUN`
 
-**Cycle:** Discover users from events -> filter voted -> batch castVoteOnBehalfOf -> batch claimReward -> loop 5min
+**Cycle:** Discover users from events -> filter voted -> batch castVoteOnBehalfOf + castNavigatorVote -> batch governance castNavigatorVote -> batch claimReward -> loop 5min
 
 ## Relayer Dashboard (apps/relayer-dashboard/)
 
@@ -258,48 +430,6 @@ Static Next.js 14 (output: "export"), Chakra UI v3, VeChain Kit, Recharts. GitHu
 
 Average user: ~10.8k-22.6k VOT3, earns ~90-190 B3TR/round.
 At 10% fee: ~9-19 B3TR per user into pool. Relayer cost: ~0.11 B3TR. Margin: ~8.9-18.9 B3TR/user.
-
-## Navigator Citizen Integration (Phase 2)
-
-Relayers also serve navigator-delegated citizens. This is ADDITIVE on top of existing auto-voting logic.
-
-### Key differences from auto-voting
-
-| Aspect | Auto-Voting Users | Navigator Citizens |
-| --- | --- | --- |
-| Vote function | `castVoteOnBehalfOf(voter, roundId)` | `castNavigatorVote(citizen, roundId)` |
-| Discovery | `AutoVotingToggled` events | `DelegationCreated/Removed` events |
-| Preferences | User's own app list | Navigator's `AllocationPreferencesSet` |
-| Voting power | Full VOT3 balance at snapshot | Delegated amount at snapshot (checkpointed) |
-| Personhood check | Yes | No |
-| In expected actions? | Yes | **No** (Option B — voluntary service) |
-| Claim function | `claimReward(cycle, voter)` | Same — `claimReward(cycle, citizen)` |
-
-### Citizens NOT in expected actions
-
-Citizens are NOT counted in `setTotalActionsForRound`. Relayers serve them voluntarily and still earn `RelayerAction.VOTE` and `RelayerAction.CLAIM` credit. This avoids a deadlock where a navigator failing to set preferences would block ALL relayer rewards for the round.
-
-### Relayer flow for citizens (per round)
-
-1. Discover citizens via `DelegationCreated`/`DelegationRemoved` events at snapshot
-2. **Wait** for navigator to set preferences — `AllocationPreferencesSet(navigator, roundId, appIds)` event
-3. Navigators must set preferences at least ~24hr before round deadline (or get slashed)
-4. Call `castNavigatorVote(citizen, roundId)` — registers `RelayerAction.VOTE`
-5. After round ends: call `claimReward(cycle, citizen)` — navigator fee + relayer fee deducted, `RelayerAction.CLAIM` registered
-
-### Fee ordering for citizens
-
-1. Navigator fee: deducted from gross reward (goes to NavigatorRegistry fee escrow)
-2. Relayer fee: deducted from remainder (goes to RelayerRewardsPool, same % and cap as auto-voting)
-3. Citizen receives the rest
-
-### Auto-voting disabled on delegation
-
-When a user delegates to a navigator, their auto-voting is automatically disabled via `XAllocationVoting.disableAutoVotingFor(citizen)`. This prevents double-counting and conflicting vote paths.
-
-### Governance proposal voting (future)
-
-Separate job: for each active proposal, check navigator decisions, call `B3TRGovernor.castNavigatorVote(proposalId, citizen)` for each citizen.
 
 ## External Resources
 

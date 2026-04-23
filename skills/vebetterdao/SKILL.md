@@ -1,11 +1,11 @@
 ---
 name: vebetterdao
-description: VeBetterDAO and X2Earn app development — B3TR/VOT3 tokens, reward distribution, sustainability proofs, app submission, governance, VeVote, and quadratic funding.
+description: VeBetterDAO and X2Earn app development — B3TR/VOT3 tokens, reward distribution, sustainability proofs, app submission, governance, VeVote, quadratic funding, and navigators.
 allowed-tools: []
 license: MIT
 metadata:
   author: VeChain
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # VeBetterDAO Skill
@@ -27,6 +27,7 @@ Use this Skill for VeBetterDAO ecosystem development:
 - Sustainability proofs and impact codes
 - App submission process to VeBetterDAO
 - Governance: VeVote, proposals, voting, quadratic funding, allocation rounds
+- Navigators: delegation, staking, freshness/intent multipliers, slashing
 
 ## Operating procedure
 
@@ -61,4 +62,5 @@ Read the matching files BEFORE doing anything else. See Critical Rules above.
 | VeBetterDAO | [references/vebetterdao.md](references/vebetterdao.md) | X2Earn, B3TR, sustainability, rewards, VeBetterDAO, impact codes, app submission |
 | Governance | [references/governance.md](references/governance.md) | VeVote, governance, voting, VOT3, proposal, steering committee, quadratic funding, allocation rounds |
 | Contracts: tokens & apps | [references/contracts-tokens-apps.md](references/contracts-tokens-apps.md) | B3TR, VOT3, Emissions, XAllocationVoting, XAllocationPool, X2EarnRewardsPool, X2EarnApps, X2EarnCreator, DBAPool, endorsement, reward distribution |
-| Contracts: governance & identity | [references/contracts-governance-identity.md](references/contracts-governance-identity.md) | B3TRGovernor, proposals, VoterRewards, GalaxyMember, Treasury, TimeLock, RelayerRewardsPool, GrantsManager, B3TRMultiSig, VeBetterPassport, signaling, entity linking, upgradeability |
+| Contracts: governance & identity | [references/contracts-governance-identity.md](references/contracts-governance-identity.md) | B3TRGovernor, proposals, VoterRewards, GalaxyMember, Treasury, TimeLock, RelayerRewardsPool, NavigatorRegistry, GrantsManager, B3TRMultiSig, VeBetterPassport, signaling, entity linking, upgradeability |
+| Navigators | [references/navigators.md](references/navigators.md) | navigator, navigators, delegation, staking, slashing, NavigatorRegistry, freshness multiplier, governance intent multiplier, navigator fee, citizen voting |

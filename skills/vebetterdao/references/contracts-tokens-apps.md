@@ -42,17 +42,21 @@ Capped ERC-20 token. 1B total supply over 12 years.
 
 Key function: `tokenDetails()` — returns name, symbol, decimals, totalSupply, cap in one call.
 
-## VOT3 (Governance Token)
+## VOT3 (Governance Token, V2)
 
-ERC-20 with voting power. Obtained by converting B3TR 1:1.
+ERC-20 with voting power. Obtained by converting B3TR 1:1. V2 added NavigatorRegistry integration for delegation lock.
 
 | Function | Description |
 |----------|-------------|
 | `convertToVOT3(amount)` | Swap B3TR → VOT3 |
-| `convertToB3TR(amount)` | Burn VOT3 → get B3TR back (only self-converted amount, not VOT3 received from others) |
+| `convertToB3TR(amount)` | Burn VOT3 → get B3TR back (only self-converted amount, not VOT3 received from others). Blocked for delegated amount |
 | `delegate(delegatee)` | Delegate voting power (auto-delegates on first receive) |
 | `getQuadraticVotingPower(account)` | Square root of token balance |
 | `getPastQuadraticVotingPower(account, timepoint)` | Historical voting power |
+| `getNavigatorLockedAmount(address)` | V2: reads delegation amount from NavigatorRegistry |
+| `unlockedBalance(address)` | V2: returns `balance - navigatorLockedAmount` (transferable amount) |
+
+**V2 delegation lock:** `_update()` enforces `balanceOf(from) - amount >= NavigatorRegistry.getDelegatedAmount(from)`. VOT3 stores only the registry address — no mapping, no role grant. `balanceOf()` returns full balance including delegated.
 
 Roles: `UPGRADER_ROLE`, `PAUSER_ROLE`.
 
@@ -77,27 +81,35 @@ Manages periodic B3TR distribution across XAllocations, Vote2Earn, Treasury, and
 | `DECAY_SETTINGS_MANAGER_ROLE` | Modify decay parameters |
 | `CONTRACTS_ADDRESS_MANAGER_ROLE` | Update external addresses |
 
-## XAllocationVoting
+## XAllocationVoting (V9)
 
-Periodic voting rounds for allocating funds to X2Earn apps. Uses quadratic funding with VOT3 voting power at round start.
+Periodic voting rounds for allocating funds to X2Earn apps. Uses quadratic funding with VOT3 voting power at round start. V9 added navigator citizen voting, freshness multiplier, and external library architecture.
 
 | Function | Description |
 |----------|-------------|
-| `startNewRound()` | Initiate new allocation round |
-| `castVote(roundId, appIds, voteWeights)` | Vote on apps (weights must exceed threshold) |
-| `toggleAutoVoting(address)` | Enable/disable auto-voting with preset preferences |
+| `startNewRound()` | Initiate new allocation round. Computes `allocationUsers` (auto-voting + citizens) and `governanceUsers` (citizens only), fetches active proposals, passes to RelayerRewardsPool |
+| `castVote(roundId, appIds, voteWeights)` | Vote on apps (weights must exceed threshold). Reverts with `DelegatedToNavigator` for delegated citizens |
+| `castVoteOnBehalfOf(voter, roundId)` | Relayer executes auto-vote for user |
+| `castNavigatorVote(citizen, roundId)` | V9: vote-or-skip for navigator-delegated citizens using navigator's custom percentages. Skip window: 720 blocks before deadline |
+| `toggleAutoVoting(address)` | Enable/disable auto-voting. Reverts for navigators (`NavigatorCannotEnableAutoVoting`) and delegated citizens (`DelegatedToNavigator`) |
+| `disableAutoVotingFor(address)` | V9: privileged, called by NavigatorRegistry on delegation |
 | `setUserVotingPreferences(appIds)` | Store preferred app IDs for auto-voting |
+| `hasUserVotedForApp(roundId, user, appId)` | V9: check if user voted for specific app |
 | `setVotingPeriod()` | Configure round duration |
 | `setAppSharesCap()` | Max % any single app can receive |
 | `setBaseAllocationPercentage()` | Minimum base allocation % |
 | `updateQuorumNumerator()` | Adjust quorum threshold |
+
+**V9 freshness:** `countVote()` computes XOR fingerprint of voted app IDs via `FreshnessUtils`, applies freshness multiplier from VoterRewards checkpoints to reward weight (not voting power).
+
+**V9 events:** `NavigatorVoteSkipped(citizen, navigator, roundId)`, `FreshnessMultiplierApplied`.
 
 | Role | Can |
 |------|-----|
 | `ROUND_STARTER_ROLE` | Start new rounds |
 | `GOVERNANCE_ROLE` | Governance operations |
 
-Integrates with: X2EarnApps, VoterRewards, Emissions, VeBetterPassport.
+Integrates with: X2EarnApps, VoterRewards, Emissions, VeBetterPassport, NavigatorRegistry, B3TRGovernor, RelayerRewardsPool.
 
 ## XAllocationPool
 

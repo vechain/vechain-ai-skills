@@ -5,7 +5,7 @@ allowed-tools: []
 license: MIT
 metadata:
   author: VeChain
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
 # VeBetterDAO Navigators Feature
@@ -16,29 +16,44 @@ Domain knowledge for the Navigators feature: rewards multipliers and navigator d
 
 ### Freshness Multiplier (Allocation Voting)
 
-Applied at `VoterRewards.registerVote()` — modifies reward weight only, NOT on-chain voting power.
+Applied in `RoundVotesCountingUtils.countVote()` via `FreshnessUtils` library — modifies reward weight only, NOT on-chain voting power.
 
 | Behavior | Multiplier |
 |---|---|
-| Updated this round (weekly) | x3 |
-| Updated within 2 rounds (bi-weekly) | x2 |
-| No update for >= 3 rounds | x1 |
+| Updated this round (weekly) | x3 (30000 bp) |
+| Updated within 2 rounds (bi-weekly) | x2 (20000 bp) |
+| No update for >= 3 rounds | x1 (10000 bp) |
 
-- "Update" = adding/removing apps or changing weights
-- Governance-configurable, must support decimals
-- Navigator-delegated citizens **inherit navigator's freshness**
+- "Update" = changing the set of apps voted for (adding/removing/swapping). Weight changes between same apps do NOT count
+- Computed via XOR fingerprint of voted app IDs (order-independent, O(n), gas-cheap)
+- First-time voters always get x3 (detected by `lastFingerprint == bytes32(0)`)
+- Governance-configurable via `VoterRewards.setFreshnessMultipliers(tier1, tier2, tier3)`
+- Values stored as `Checkpoints.Trace208` in VoterRewards (snapshotted at round start)
+- Navigator-delegated citizens **inherit navigator's freshness** (citizen fingerprint updated with navigator's preferences at vote time)
 
 ### Governance Intent Multiplier (Proposal Voting)
 
-Applied at `VoterRewards.registerVote()` per-proposal at registration time. Each proposal is independent.
+Applied in `GovernorVotesLogic` before `registerVote()`. Per-proposal at registration time — each proposal independent.
 
 | Vote Type | Multiplier |
 |---|---|
-| For / Against | x1 |
-| Abstain | x0.30 |
+| For / Against | x1 (10000 bp) |
+| Abstain | x0.30 (3000 bp) |
 
-- Governance-configurable
+- Governance-configurable via `VoterRewards.setIntentMultipliers(forAgainst, abstain)`
 - Navigator-delegated citizens **inherit navigator's decision multiplier**
+
+### Multiplier stacking
+
+- Multiplicative with existing GM multiplier: `weight * freshness_or_intent * GM`
+- Each multiplier scoped to its voting type (freshness -> allocation, intent -> governance)
+- Scale: basis points (10000 = 1x)
+
+### Safe upgrade
+
+`VoterRewards.initializeV7` creates two checkpoints per multiplier:
+1. At round start timepoint → 10000 (neutral) so current round is unaffected
+2. At current block → real configured values (takes effect next round)
 
 ## Phase 2: Navigator System
 
@@ -53,280 +68,286 @@ Applied at `VoterRewards.registerVote()` per-proposal at registration time. Each
 
 - Permissionless — stake minimum 50,000 B3TR in NavigatorRegistry
 - Max stake: 1% of circulating VOT3 (enforced at deposit only, grandfathered)
-- 10:1 delegation ratio: stake must be >= 10% of total delegated VOT3
+- 10:1 delegation ratio: stake must be >= 10% of total delegated VOT3. Stake reduction blocked if it would violate ratio
 - On-chain metadata URI for profile (same pattern as X2EarnApps)
-- On-chain reports every 2 rounds via `submitReport(metadataURI)`
+- On-chain reports optional every round, **mandatory at least once every 2 rounds** via `submitReport(metadataURI)`
 - Navigators cannot enable auto-voting (mutually exclusive)
+- Navigators cannot delegate to other navigators (mutually exclusive roles)
 
 ### Delegation
 
-- Citizens delegate a **specific VOT3 amount** (explicit choice, not full balance)
-- VOT3 stays in wallet; delegated portion **locked** via `_update()`: `balance - delegatedAmount >= transferAmount`
-- VOT3 stores delegation amounts (new mapping), NavigatorRegistry updates via privileged role
-- One navigator per citizen
-- Snapshotted at round start; mid-round changes take effect next round
+- Citizens delegate a **specific VOT3 amount** (explicit choice, not full balance), minimum **1 VOT3**
+- VOT3 stays in citizen's wallet, but delegated portion is **locked** — cannot transfer or convert to B3TR
+- `balanceOf()` returns **full** VOT3 balance (including delegated). Use `unlockedBalance()` for transferable amount
+- VOT3 `_update()` enforces: `balance - delegatedAmount >= transferAmount`
+- VOT3 reads delegation amounts from NavigatorRegistry via `INavigatorRegistry.getDelegatedAmount(from)` — no role grant, no mapping on VOT3; VOT3 stores only the registry address
+- **One navigator per citizen**
+- **Snapshotted at round start** — mid-round changes take effect next round
 - **Partial undelegation allowed** (takes effect next round)
-- No personhood check for delegated citizens
-- Citizens **cannot vote manually** while delegated — must exit first
-- Auto-voting disabled when delegating
+- **No personhood check** for citizens delegated to a navigator
+- Citizens **cannot vote manually** while delegated — must exit delegation first
+- Auto-voting is **disabled** when delegating (NavigatorRegistry calls `XAllocationVoting.disableAutoVotingFor`)
 - Non-delegated VOT3 is idle (earns nothing)
 - Delegation **rejected** if it would exceed navigator's capacity (10:1 ratio)
+
+### Delegation Functions
+
+| Function | Purpose | Events |
+|---|---|---|
+| `delegate(navigator, amount)` | First-time only. Auto-clears stale delegation from dead navigator. | `DelegationCreated` |
+| `increaseDelegation(amount)` | Add more VOT3 to existing delegation | `DelegationIncreased` |
+| `reduceDelegation(amount)` | Partial or full reduction (full = removes delegation) | `DelegationDecreased` or `DelegationRemoved` |
+| `undelegate()` | Fully remove delegation | `DelegationRemoved` |
+
+### Global Citizen Count
+
+NavigatorRegistry tracks delegated citizens globally:
+- `Checkpoints.Trace208 totalDelegatedCitizens` — incremented on delegate, decremented on undelegate
+- `mapping(address => uint256) navigatorCitizenCount` — per-navigator count
+- `getTotalDelegatedCitizensAtTimepoint(timepoint)` — used by `XAllocationVoting.startNewRound` to compute `governanceUsers`
+- On `announceExit()` / `deactivateNavigator()`: navigatorCitizenCount zeroed and totalDelegatedCitizens decremented immediately
 
 ### Voting Mechanics
 
 #### Allocation Voting (XAllocationVoting)
 
 Two separate functions (NOT merged):
-- `castVoteOnBehalfOf(voter, roundId)` — for auto-voting users (existing, unchanged)
-- `castNavigatorVote(citizen, roundId)` — for navigator-delegated citizens (new)
-
-```
-castNavigatorVote(citizen, roundId):
-  - Citizen must be delegated to a navigator
-  - Navigator must have set allocation preferences for this round
+- `castVoteOnBehalfOf(voter, roundId)` — existing auto-voting flow (unchanged)
+- `castNavigatorVote(citizen, roundId)` — navigator-delegated citizens:
   - NO personhood check
-  - Voting power = delegated amount at round snapshot (checkpointed, NOT full VOT3 balance)
-  - Uses navigator's app preferences (equal weight distribution)
-  - Registers RelayerAction.VOTE for the caller
-  - Emits NavigatorVoteCast(citizen, navigator, roundId, appIds, voteWeights)
-```
+  - Voting power = **delegated amount at round snapshot** (checkpointed, NOT full balance)
+  - Navigator's app preferences and percentages (custom weight distribution in basis points, must sum to 10000; max 15 apps)
+  - Each citizen = separate transaction
+  - Includes built-in skip-or-vote logic (see Relayer Integration below)
+  - Registers `RelayerAction.VOTE` for the caller
 
-- Navigator setting preferences = their own vote (personal VOT3 balance, staked B3TR not counted)
-- Per-round voting data stored on-chain for slashing verification
-- Delegation amounts are **checkpointed** (Checkpoints.Trace208) for snapshot queries
+Navigator setting preferences = their own vote (personal VOT3 balance, staked B3TR not counted)
 
-#### Governance Proposal Voting (B3TRGovernor - NEW)
+#### Governance Proposal Voting (B3TRGovernor)
 
-```
-castNavigatorVote(proposalId, citizen):
-  - Citizen must be delegated to a navigator (via NavigatorRegistry)
-  - Navigator must have set decision (1=Against, 2=For, 3=Abstain)
-  - Voting power = delegated amount at proposal snapshot (checkpointed)
-  - Registers vote with intent multiplier for rewards
-  - Emits NavigatorGovernanceVoteCast(citizen, navigator, proposalId, support, weight, power)
-```
+`castNavigatorVote(proposalId, citizen)` — separate function:
+1. Citizen must be delegated to a navigator at proposal snapshot
+2. Navigator must have set decision (1=Against, 2=For, 3=Abstain)
+3. Voting power = **delegated amount at proposal snapshot** (checkpointed)
+4. Intent multiplier applied for rewards
+5. Registers `RelayerAction.VOTE` in RelayerRewardsPool
+6. Includes built-in skip-or-vote logic (see Relayer Integration below)
 
 ### getVotes Reflects Delegation
 
-`getVotes(account, timepoint)` on both governors subtracts the navigator-delegated amount, returning only undelegated voting power:
-- `GovernorVotesLogic.getVotes` — `VOT3.getPastVotes - navigatorRegistry.getDelegatedAmountAtTimepoint`
-- `VotesUtils.getVotes` (XAllocationVoting) — same subtraction via ExternalContractsStorage
-- `getQuadraticVotingPower` — calls `getVotes`, so returns `sqrt(undelegated) * 1e9`
-- `getTotalVotingPower` (XAllocationVoting) — cascades from `getVotes`
-- Returns full balance when `navigatorRegistry == address(0)`
-- **View-only**: actual `castVote` reads `getPastVotes` directly; delegated citizens already blocked; navigator votes use `getDelegatedAmountAtTimepoint`
+`getVotes(account, timepoint)` on both governors:
+- If citizen had a **live** navigator at `timepoint`: returns **delegated amount only** (this is the citizen's voting power)
+- If no navigator: returns full `VOT3.getPastVotes` (+ `getDepositVotingPower` in XAllocationVoting)
+- Returns full balance when `navigatorRegistry == address(0)` (backwards compatible)
+- `getQuadraticVotingPower` calls `getVotes` internally, so delegation cascades to `sqrt(delegated) * 1e9`
+- **View-only**: actual `castVote` reverts with `DelegatedToNavigator` if citizen had a navigator at snapshot. Navigator votes use `getDelegatedAmountAtTimepoint` directly
 
 ### Relayer Integration
 
-#### Key design: citizens NOT counted in expected actions (Option B)
-- `startNewRound()` expected actions = auto-voting users ONLY
-- Relayers serve citizens **voluntarily** and earn RelayerAction.VOTE credit
-- Navigator slashing + relayer fee incentives drive service
-- Avoids deadlock: if navigator doesn't set preferences, relayer rewards aren't blocked
+**Citizens counted in relayer expected actions:**
+- At round start, `XAllocationVoting.startNewRound` computes:
+  - `allocationUsers = autoVotingUsers + totalDelegatedCitizens`
+  - `governanceUsers = totalDelegatedCitizens` (citizens only — relayers don't cast governance votes for auto-users)
+- Fetches active governance proposals via `B3TRGovernor.getActiveProposals()`
+- Passes all to `RelayerRewardsPool.setTotalActionsForRoundWithGovernance(roundId, allocationUsers, governanceUsers, activeProposalIds)`
+- Expected actions per round: `allocationUsers * 2` (vote + claim) + `governanceUsers * activeProposals` (governance votes)
 
-#### Late preferences slashing
+**Skip-or-vote flow:**
+
+`castNavigatorVote` (both allocation and governance) merges vote and skip into a single function:
+
+1. Navigator dead at snapshot → revert `NotDelegatedToNavigator` (citizen was never delegated)
+2. Navigator dead NOW (exited/deactivated after snapshot) → skip immediately, reduce expected actions
+3. Navigator alive + preferences/decision set → vote normally
+4. Navigator alive + no preferences/decision + **skip window reached** → skip, reduce expected actions
+5. Navigator alive + no preferences/decision + skip window NOT reached → revert (relayer retries later)
+
+Skip window = 2 hours (~720 blocks) before round/proposal deadline. Constants: `CITIZEN_SKIP_WINDOW_BLOCKS` (allocation), `GOVERNANCE_SKIP_WINDOW_BLOCKS` (governance).
+
+**Per-user skip tracking (RelayerRewardsPool V3):**
+- `reduceUserAllocationVote(roundId, user)` — reduces one allocation vote action for a specific user
+- `reduceUserGovernanceVote(roundId, user, proposalId)` — reduces one governance vote action per user/proposal
+- When ALL vote actions for a user are skipped (allocation + all governance proposals), the claim action is auto-reduced
+- Prevents double-skip: reverts if already reduced for the same user/round/proposal
+
+**Active proposals caching:**
+- `B3TRGovernor.proposalsForRound` mapping populated at proposal creation
+- `getActiveProposals()` filters by Active state from current round's proposals
+- Cached in `RelayerRewardsPool.activeProposalsForRound` at round start
+
+**Late preferences infraction:**
 - Navigators must set preferences at least `preferenceCutoffPeriod` blocks (~24hr) before round deadline
-- Setting later is allowed but incurs minor slash via `reportLatePreferences(navigator, roundId)`
-- `preferencesSetBlock[navigator][roundId]` records when set
+- Setting later is allowed, but marks the round as a minor infraction
 
-#### Auto-voting disabled on delegation
-- `NavigatorRegistry.delegate()` calls `XAllocationVoting.disableAutoVotingFor(citizen)`
-- Privileged function — only callable by NavigatorRegistry
-- On undelegate: user re-enables auto-voting manually if desired
+**Auto-voting disabled on delegation:**
+- `NavigatorRegistry.delegate()` calls `XAllocationVoting.disableAutoVotingFor(citizen)` (privileged call)
+- On undelegate: user re-enables auto-voting manually
 
-#### Relayer flow (per round)
-1. Round starts -> relayer discovers citizens via `DelegationCreated/Removed` events
-2. Relayer waits for `AllocationPreferencesSet` event from each navigator
-3. Once navigator sets preferences: relayer calls `castNavigatorVote(citizen, roundId)` for each citizen
-4. Round ends -> relayer calls `VoterRewards.claimReward(cycle, citizen)` — same function for all users
-5. Both VOTE and CLAIM actions registered, relayer earns proportional share
+**Preferred relayer:**
+- Citizens set `preferredRelayer` manually via `relayerRewardsPool.setPreferredRelayer(relayer)`
+- During early access, only the preferred relayer (if set and registered) can act on the citizen's behalf
+- **No auto-setting on delegation** — citizens must set it manually
 
-#### Preferred relayer
-- Navigator who is a registered relayer: `preferredRelayer` auto-set for citizens on delegation
-- Citizens can override `preferredRelayer` to a different relayer anytime
-- Navigators cannot enable auto-voting (prevents timing issues)
+**Fee ordering for citizens (at claim time):**
+1. Navigator fee: deducted from gross reward first (goes to NavigatorRegistry fee escrow)
+2. Relayer fee: deducted from remainder (goes to RelayerRewardsPool)
+3. Citizen receives the rest
+- Relayer fee applies to both auto-voters AND citizens
+- CLAIM action registered for both
 
-### Rewards & Fee Ordering
+## Rewards
 
-Fee ordering for citizens (deducted at `VoterRewards.claimReward`):
+Rewards proportional to **delegated amount at snapshot only** (not full balance). Citizen's own GM level applies.
+
+Fee ordering:
 ```
-1. Navigator fee: deducted from gross reward first (% of total, goes to NavigatorRegistry fee escrow)
-2. Relayer fee: deducted from remainder (% of post-nav amount, goes to RelayerRewardsPool)
+1. Navigator fee = gross reward * navigatorFeePercentage / 10000 (goes to NavigatorRegistry escrow)
+2. Relayer fee = relayerRewardsPool.calculateRelayerFee(gross - navigatorFee) (goes to RelayerRewardsPool)
 3. Citizen receives the rest
 ```
 
-Key rules:
-- Rewards proportional to **delegated amount only** (checkpointed at round snapshot)
-- Citizen's own GM level applies (not navigator's)
-- Relayer fee applies to both auto-voters AND citizens (`hadAutoVoting || isDelegated`)
+- Relayer fee applies to both auto-voters AND navigator citizens
 - Navigator fee applies to citizens only
-- Fee deducted at reward claim time
-- No navigator fee for non-delegated users
-- CLAIM action registered for both auto-voters and citizens
+- Fee deducted at reward claim time in VoterRewards.claimReward()
+- Citizens' freshness fingerprints updated with navigator's app preferences at vote time (inheriting freshness)
+- Citizens inherit navigator's governance intent multiplier
 
-### Fee Escrow
+## Fee Escrow
 
-- Inside NavigatorRegistry: `navigator => round => feeAmount`
+Inside NavigatorRegistry: `mapping(navigator => mapping(round => amount))`
 - Each round's fees claimable **4 rounds later** (rolling unlock)
 - Major slash takes **all unclaimed locked fees**
 
-**Example:** Fees earned: round 1 = 800, round 2 = 600, round 3 = 1000. Claimable: round 5 = 800, round 6 = 600, round 7 = 1000.
+## Slashing
 
-### Slashing
+### Minor (Automatic, 5% of current remaining stake — compounding)
 
-#### Minor (Automatic, 10% of current remaining stake — compounding)
+Reportable by anyone via public function. Slashed funds to treasury.
 
-Reportable by anyone via public function (like `checkEndorsementStatus` in X2EarnApps). Slashed funds to treasury.
-
-Four triggers:
+Five infraction types:
 1. **Missed allocation vote** — had citizens, didn't set preferences for a round
 2. **Missed governance proposal vote** — had citizens, didn't set decision during proposal's voting period
 3. **Stale allocation preferences** — no update >= 3 rounds (same threshold as freshness multiplier)
-4. **Missed report** — must submit every 2 rounds
+4. **Missed report** — no report submitted in 2 consecutive rounds
+5. **Late preferences** — set allocation preferences after `preferenceCutoffPeriod` (~24hr) before round deadline
 
-**Example (compounding):** 50K stake -> slash 1: 5K (remaining 45K) -> slash 2: 4.5K (remaining 40.5K)
+Reporting model:
+- Minor reporting is **per round**, not per infraction
+- Anyone calls `reportRoundInfractions(navigator, roundId, proposalIds)` after the round ends
+- Contract evaluates all five infraction types on-chain for that round
+- If any infraction is true, exactly **one** minor slash is applied for that round
+- If round is still active, report reverts with `RoundStillActive`
 
 If stake drops below 50K minimum: stays active but **can't accept new delegations** until topped up.
 
-#### Major (Governance process, up to 100% of stake + locked fees + removal)
+### Major (Governance process, up to 100% of stake + locked fees + removal)
 
 For: manipulation, bribery, vote buying, undisclosed compensation.
-Process: 5 navigators lock stakes to trigger -> public findings within 4 rounds -> governance vote.
+Process: 5 navigators lock stakes to trigger → public findings within 4 rounds → governance vote.
 
-### Deactivation
+## Deactivation
 
-- Via governance proposal (anyone can propose) with on-chain execution
+- Via **governance proposal** (anyone can propose) with on-chain execution
 - Proposal includes **slash amount** (0-100% of stake + locked fees)
 - Takes effect **next round** (current round completes normally)
 - **Cannot reactivate** — must register fresh
 
-### Exit
+## Exit
 
 1. `announceExit()` — event emitted, **1 round notice** (governance-configurable)
-2. **Lazy invalidation**: as soon as exit announced, all citizen delegations become void
+2. Navigator must continue voting during notice
+3. **Lazy invalidation**: as soon as exit is announced, all citizen delegations become void at the view level
    - `isDelegated()` returns false, `getDelegatedAmount()` returns 0
    - VOT3 transfer lock auto-releases (no citizen action needed)
-   - Citizens can directly re-delegate to new navigator (stale delegation auto-cleared)
-3. Navigator must continue voting during notice for citizens of that round
-4. `finalizeExit()` — stake available **immediately**, locked fees on their individual 4-round schedules
-5. Re-entry = fresh registration
+   - `castNavigatorVote` fails with `NotDelegatedToNavigator`
+   - No new citizens can delegate (`NavigatorCannotAcceptDelegations`)
+4. Citizens can **directly re-delegate to a new navigator** without calling `undelegate()` first (stale delegation auto-cleared)
+5. After exit notice period passes (deactivation checkpoint reached), `withdrawStake()` becomes available — stake returned **immediately**. Locked fees follow their individual 4-round schedules via `claimFee(roundId)`
+6. Re-entry = fresh registration
+7. **No `finalizeExit()`** — exit is self-enforcing via checkpoint timing
 
-### Lazy Invalidation (Citizen UX)
+### Citizen experience on navigator exit/deactivation
 
-When a navigator exits or is deactivated, citizen delegations become void automatically at the view level:
-- `_isNavigatorDead()` checks `isDeactivated || exitAnnouncedRound > 0`
-- `getNavigator()`, `getDelegatedAmount()`, `isDelegated()` all return void values
-- `getDelegatedAmountAtTimepoint()` NOT affected (historical data preserved for rewards)
-- `delegate()` auto-clears stale delegation and emits `DelegationRemoved` when citizen re-delegates
-- Zero gas cost — no iteration over citizens needed
+Citizens don't need to take any action — VOT3 automatically unlocked via lazy invalidation:
+- `getDelegatedAmount(citizen)` checks if navigator is dead → returns 0
+- VOT3._update() reads `getDelegatedAmount` → sees 0 → transfer allowed
+- Citizen can `delegate(newNavigator, amount)` directly — old stale checkpoint auto-cleared
+- Historical delegation data preserved for reward calculation (`getDelegatedAmountAtTimepoint` not affected)
 
-### Contract-Level Protections
+### Indexer: implicit delegation removal
 
-- **Self-delegation blocked**: navigator cannot delegate to themselves (`SelfDelegationNotAllowed`)
-- **Citizens can't manual vote**: `castVote()` reverts with `DelegatedToNavigator` for delegated citizens
-- **Citizens can't manual vote on governance**: `GovernorVotesLogic.castVote()` also checks
-- **Navigators can't enable auto-voting**: `toggleAutoVoting()` reverts with `NavigatorCannotEnableAutoVoting`
-- **Delegated citizens can't enable auto-voting**: `toggleAutoVoting()` reverts with `DelegatedToNavigator`
+No `DelegationRemoved` events emitted when a navigator exits or is deactivated. **Indexers must treat `ExitAnnounced` / `NavigatorDeactivated` events as bulk removal of all citizen delegations for that navigator.**
+
+## Staking and Voting Power
+
+**Navigators stake B3TR, not VOT3.** Staked B3TR is collateral — it does **not** grant voting power and does **not** earn rewards.
+
+| Actor | Voting power source | What's NOT counted |
+|---|---|---|
+| Navigator (own vote) | Their personal VOT3 balance | Staked B3TR, delegated VOT3 from citizens |
+| Citizen (navigated vote) | Their delegated VOT3 amount at snapshot | Remaining undelegated VOT3 |
+
+Delegated VOT3 never leaves the citizen's wallet. Navigator decides what to vote; each citizen's delegated amount is cast as a separate vote.
+
+**Economics:** Since staked B3TR earns nothing, navigators must attract enough delegation to earn fees that offset the opportunity cost. Example: 50K B3TR staked → up to 500K VOT3 delegated → navigator earns 20% fee on rewards generated by those 500K VOT3.
+
+## Contract-Level Protections
+
+| Protection | Contract | Error |
+|---|---|---|
+| Self-delegation blocked | NavigatorDelegationUtils | `SelfDelegationNotAllowed` |
+| Delegators can't register as navigator | NavigatorStakingUtils | `DelegatorCannotRegister` |
+| Citizens can't manual vote (allocation) | XAllocationVoting | `DelegatedToNavigator` |
+| Citizens can't manual vote (governance) | GovernorVotesLogic | `DelegatedToNavigator` |
+| Navigators can't enable auto-voting | XAllocationVoting | `NavigatorCannotEnableAutoVoting` |
+| Citizens can't enable auto-voting | XAllocationVoting | `DelegatedToNavigator` |
+| Fee deposit restricted to VoterRewards | NavigatorRegistry | `UnauthorizedCaller` |
+| Lazy invalidation on exit/deactivation | NavigatorDelegationUtils | `_isNavigatorDead()` |
 
 ## Key Contracts
 
-### Modified
-- `VOT3.sol` — delegation amount mapping, `_update()` transfer restriction, privileged role for NavigatorRegistry
-- `XAllocationVotingGovernor.sol` — navigator check in `castVoteOnBehalfOf`, store per-round voting data
-- `B3TRGovernor.sol` — new `castVoteOnBehalfOf` for navigator citizens only, same early access
-- `VoterRewards.sol` — multipliers at `registerVote()`, navigator fee at claim time
-
 ### New
-- `NavigatorRegistry` — registration, staking, delegation, voting decisions, metadata, reports, fee escrow, slashing, deactivation, exit, relayer integration
+- `NavigatorRegistry` — UUPS upgradeable facade with 6 libraries: NavigatorStakingUtils, NavigatorDelegationUtils, NavigatorVotingUtils, NavigatorFeeUtils, NavigatorSlashingUtils, NavigatorLifecycleUtils
+
+### Modified
+- `VOT3.sol` (V2) — reads delegation lock from NavigatorRegistry, no duplicate storage
+- `XAllocationVoting.sol` (V9) — `castNavigatorVote`, `disableAutoVotingFor`, `startNewRound` with citizens + governance
+- `B3TRGovernor.sol` (V10) — `castNavigatorVote`, `getActiveProposals`, `proposalsForRound`, relayerRewardsPool
+- `VoterRewards.sol` (V7) — multiplier checkpoints, navigator fee deduction, intent multiplier
+- `RelayerRewardsPool.sol` (V3) — per-user skip tracking, `setTotalActionsForRoundWithGovernance`, activeProposalsForRound
 
 ### Dependencies (read-only)
 - `VOT3.sol` — circulating supply for max stake cap
 - `VeBetterPassport` — personhood checks (skipped for navigated citizens)
-- `RelayerRewardsPool` — relayer registration check, `preferredRelayer` management
+- `RelayerRewardsPool` — relayer registration check, preferredRelayer, per-user skip tracking
+- `B3TRGovernor` — active proposals query at round start
 
 ## Codebase Reference
 
 ### Navigator contracts
-- `/packages/contracts/contracts/navigator/NavigatorRegistry.sol` — main facade, UUPS upgradeable
+- `/packages/contracts/contracts/navigator/NavigatorRegistry.sol` — main facade
 - `/packages/contracts/contracts/navigator/libraries/NavigatorStorageTypes.sol` — single ERC-7201 namespace
-- `/packages/contracts/contracts/navigator/libraries/NavigatorStakingUtils.sol` — registration, stake/unstake
-- `/packages/contracts/contracts/navigator/libraries/NavigatorDelegationUtils.sol` — delegation with checkpoints
-- `/packages/contracts/contracts/navigator/libraries/NavigatorVotingUtils.sol` — preferences + decisions
-- `/packages/contracts/contracts/navigator/libraries/NavigatorFeeUtils.sol` — per-round fee escrow
-- `/packages/contracts/contracts/navigator/libraries/NavigatorSlashingUtils.sol` — minor + major slashing
-- `/packages/contracts/contracts/navigator/libraries/NavigatorLifecycleUtils.sol` — exit, deactivation, reports
-- `/packages/contracts/contracts/interfaces/INavigatorRegistry.sol` — full interface
+- `/packages/contracts/contracts/navigator/libraries/NavigatorStakingUtils.sol`
+- `/packages/contracts/contracts/navigator/libraries/NavigatorDelegationUtils.sol`
+- `/packages/contracts/contracts/navigator/libraries/NavigatorVotingUtils.sol`
+- `/packages/contracts/contracts/navigator/libraries/NavigatorFeeUtils.sol`
+- `/packages/contracts/contracts/navigator/libraries/NavigatorSlashingUtils.sol`
+- `/packages/contracts/contracts/navigator/libraries/NavigatorLifecycleUtils.sol`
+- `/packages/contracts/contracts/interfaces/INavigatorRegistry.sol`
 
 ### Modified contracts
-- `/packages/contracts/contracts/x-allocation-voting-governance/XAllocationVoting.sol` — castNavigatorVote, disableAutoVotingFor
-- `/packages/contracts/contracts/x-allocation-voting-governance/libraries/VotesUtils.sol` — getVotes subtracts navigator delegation
-- `/packages/contracts/contracts/governance/B3TRGovernor.sol` — castNavigatorVote
-- `/packages/contracts/contracts/governance/libraries/GovernorVotesLogic.sol` — castNavigatorVote logic, getVotes subtracts navigator delegation
-- `/packages/contracts/contracts/governance/libraries/GovernorStorageTypes.sol` — navigatorRegistry field
-- `/packages/contracts/contracts/governance/libraries/GovernorConfigurator.sol` — setNavigatorRegistry
-- `/packages/contracts/contracts/VoterRewards.sol` — navigator fee deduction, relayer fee for citizens
-- `/packages/contracts/contracts/VOT3.sol` — NAVIGATOR_ROLE, setNavigatorLockedAmount, _update lock
-- `/packages/contracts/contracts/x-allocation-voting-governance/libraries/XAllocationVotingStorageTypes.sol` — navigatorRegistry in ExternalContracts
-- `/packages/contracts/contracts/x-allocation-voting-governance/libraries/ExternalContractsUtils.sol` — setNavigatorRegistry
+- `/packages/contracts/contracts/x-allocation-voting-governance/XAllocationVoting.sol`
+- `/packages/contracts/contracts/x-allocation-voting-governance/libraries/VotesUtils.sol`
+- `/packages/contracts/contracts/governance/B3TRGovernor.sol`
+- `/packages/contracts/contracts/governance/libraries/GovernorVotesLogic.sol`
+- `/packages/contracts/contracts/governance/libraries/GovernorStorageTypes.sol`
+- `/packages/contracts/contracts/governance/libraries/GovernorConfigurator.sol`
+- `/packages/contracts/contracts/VoterRewards.sol`
+- `/packages/contracts/contracts/VOT3.sol`
+- `/packages/contracts/contracts/RelayerRewardsPool.sol`
 
 ## Not in v1
 
 1. Navigator-configurable fee rates (fixed 20%)
 2. Staked B3TR counting as navigator voting power
 3. B3TR -> VOT3 conversion during staking
-
-## All Resolved Design Decisions
-
-1. No personhood check for navigator-delegated citizens
-2. Navigators vote on BOTH allocation and governance proposals
-3. B3TRGovernor: `castNavigatorVote(proposalId, citizen)` — separate function (not merged with castVote)
-4. XAllocationVoting: `castNavigatorVote(citizen, roundId)` — separate from `castVoteOnBehalfOf`
-5. Votes blocked until navigator sets decision/preferences
-6. Citizens delegate specific VOT3 amount (not full balance)
-7. Delegated VOT3 locked via VOT3._update() — only delegated portion locked, rest free to transfer/convert
-8. Delegation amounts checkpointed (Checkpoints.Trace208) for snapshot queries at voting time
-9. Partial undelegation allowed (takes effect next round)
-10. Freshness multiplier inherited from navigator
-11. Governance intent multiplier inherited from navigator's decision
-12. Fee ordering: navigator fee first (% of gross), then relayer fee (% of remainder)
-13. Navigators can't delegate to other navigators (mutually exclusive)
-14. Navigator's own vote = automatic when setting preferences/decisions (personal VOT3, not staked B3TR)
-15. Deactivation takes effect next round
-16. No citizen override — can't vote manually while delegated
-17. Same early access model for B3TRGovernor
-18. Both phases ship together
-19. Same preference format as auto-voting (app IDs, equal weight)
-20. Rewards proportional to delegated amount only (at snapshot)
-21. Citizen's GM level applies
-22. Relayer fee applies to both auto-voters AND citizens
-23. Navigator fee applies to citizens only
-24. preferredRelayer auto-set on delegation (if navigator is relayer), cleared on full exit
-25. Citizens can override preferredRelayer
-26. Fee escrow inside NavigatorRegistry, per-round, 4-round lock
-27. Minor slash = 10% of current remaining stake (compounding)
-28. Below minimum after slash = active but can't accept new delegations
-29. Max stake cap enforced at deposit only
-30. Delegation rejected if exceeds capacity
-31. Exit: 1 round notice, must keep voting, stake immediate, fees on schedule
-32. Deactivation by governance proposal, includes slash amount
-33. No reactivation — fresh registration required
-34. On-chain reports every 2 rounds, missed = minor infraction
-35. Navigator stakes B3TR
-36. Navigators cannot enable auto-voting
-37. Multipliers applied at registerVote(), don't affect on-chain voting power
-38. Per-proposal governance intent — each proposal independent
-39. Citizens NOT counted in relayer expected actions (Option B) — avoids deadlock if navigator fails
-40. Late preferences slashing: must set at least 24hr before round deadline, otherwise minor slash
-41. Auto-voting auto-disabled on delegation via `disableAutoVotingFor` privileged call
-42. `castNavigatorVote` registers `RelayerAction.VOTE` for the caller
-43. CLAIM action registered for citizens at reward claim time (same as auto-voters)
-44. Permissionless registration (50,000 B3TR minimum stake)
-45. Major slash forfeits all unclaimed locked fees (`feesForfeited` flag)
-46. Lazy invalidation: citizen delegations auto-void when navigator exits/deactivated (view-level, zero gas)
-47. Citizens can re-delegate directly to new navigator without calling undelegate first (stale delegation auto-cleared)
-48. Self-delegation blocked: navigator cannot delegate to themselves (`SelfDelegationNotAllowed`)
-49. Delegated citizens cannot manual castVote (`DelegatedToNavigator` error)
-50. Navigators cannot enable auto-voting (`NavigatorCannotEnableAutoVoting`)
-51. Delegated citizens cannot enable auto-voting (`DelegatedToNavigator`)
-52. `getDelegatedAmountAtTimepoint` NOT affected by lazy invalidation (historical data preserved for rewards)
-53. `getVotes` subtracts navigator-delegated amount on both governors (view-only, castVote unaffected)
