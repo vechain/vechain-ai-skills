@@ -77,7 +77,7 @@ Applied in `GovernorVotesLogic` before `registerVote()`. Per-proposal at registr
 ### Delegation
 
 - Citizens delegate a **specific VOT3 amount** (explicit choice, not full balance), minimum **1 VOT3**
-- VOT3 stays in citizen's wallet, but delegated portion is **locked** — cannot transfer or convert to B3TR
+- VOT3 stays in citizen's wallet, but the delegated portion is locked (cannot transfer or convert to B3TR)
 - `balanceOf()` returns **full** VOT3 balance (including delegated). Use `unlockedBalance()` for transferable amount
 - VOT3 `_update()` enforces: `balance - delegatedAmount >= transferAmount`
 - VOT3 reads delegation amounts from NavigatorRegistry via `INavigatorRegistry.getDelegatedAmount(from)` — no role grant, no mapping on VOT3; VOT3 stores only the registry address
