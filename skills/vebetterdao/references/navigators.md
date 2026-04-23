@@ -4,7 +4,7 @@
 
 Use when the user asks about: navigators, delegation, navigator staking, freshness multiplier, governance intent multiplier, navigator fees, slashing, NavigatorRegistry, or professional voting delegates.
 
-For full implementation detail, use the dedicated **navigators** skill.
+For full implementation detail, use the dedicated **vebetterdao-navigators** skill.
 
 ## Overview
 
