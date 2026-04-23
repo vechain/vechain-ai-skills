@@ -1,7 +1,7 @@
 {
   "name": "vechain-ai",
   "version": "0.3.0",
-  "description": "VeChain AI skill collection — vechain-core, vechain-kit, frontend, smart-contract-development, vebetterdao, navigators, stargate, and more (13 skills)",
+  "description": "VeChain AI skill collection — vechain-core, vechain-kit, frontend, smart-contract-development, vebetterdao, navigators, secure-github-actions, and more (16 skills)",
   "author": {
     "name": "VeChain",
     "email": "developers@vechain.org"
@@ -17,7 +17,8 @@
     "fee-delegation",
     "vebetterdao",
     "stargate",
-    "smart-contracts"
+    "smart-contracts",
+    "github-actions"
   ],
   "license": "MIT",
   "skills": [
@@ -34,6 +35,8 @@
     "./skills/vechain-react-native-dev",
     "./skills/indexer-core",
     "./skills/x-2-earn-apps",
-    "./skills/navigators"
+    "./skills/navigators",
+    "./skills/thor",
+    "./skills/secure-github-actions"
   ]
 }

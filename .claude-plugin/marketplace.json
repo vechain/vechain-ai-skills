@@ -113,6 +113,22 @@
         "repo": "vechain/vechain-ai-skills"
       },
       "description": "Build X2Earn sustainability apps on VeBetterDAO — reward distribution, sustainability proofs, app submission, endorsement, security, and VePassport integration"
+    },
+    {
+      "name": "thor",
+      "source": {
+        "source": "github",
+        "repo": "vechain/vechain-ai-skills"
+      },
+      "description": "VeChainThor node internals — architecture, consensus (PoA/PoS/BFT), built-in contracts, REST API, storage, P2P, block production, transaction lifecycle, rewards, staking, and contributing to the Go codebase"
+    },
+    {
+      "name": "secure-github-actions",
+      "source": {
+        "source": "github",
+        "repo": "vechain/vechain-ai-skills"
+      },
+      "description": "Secure GitHub Actions workflows — full SHA pinning for `uses:`, safe `pull_request` handling, least-privilege permissions, Dependabot updates, and shell-injection-safe `run:` steps"
     }
   ]
 }
