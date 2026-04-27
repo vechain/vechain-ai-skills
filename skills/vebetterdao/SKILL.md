@@ -1,6 +1,6 @@
 ---
 name: vebetterdao
-description: VeBetterDAO and X2Earn app development — B3TR/VOT3 tokens, reward distribution, sustainability proofs, app submission, governance, VeVote, and quadratic funding.
+description: VeBetterDAO and X2Earn app development — B3TR/VOT3 tokens, reward distribution, sustainability proofs, app submission, governance, VeVote, quadratic funding, and B3MO Quests.
 allowed-tools: []
 license: MIT
 metadata:
@@ -12,10 +12,10 @@ metadata:
 
 ## CRITICAL RULES
 
-1. **Read reference files FIRST.** When the user's request involves any topic in the reference table below, read those files before doing anything else — before writing code, before making decisions. Briefly mention which files you are reading so the user can confirm the skill is active (e.g., "Reading VeBetterDAO reference...").
+1. **Read reference files FIRST.** When the user's request involves any topic in the reference map below, read those files before doing anything else — before writing code, before making decisions. Briefly mention which files you are reading so the user can confirm the skill is active (e.g., "Reading VeBetterDAO reference...").
 2. **Information priority for VeChain topics:** (a) Reference files in this skill — always the primary source. (b) VeChain MCP tools — use `@vechain/mcp-server` for on-chain data, transaction building, and live network queries; use Kapa AI MCP for VeChain documentation lookups. (c) Web search — only as a last resort, and only for topics NOT covered in the reference files.
 3. **Prefer working directly in the main conversation** for VeChain tasks. Plan mode and subagents do not inherit skill context and may fall back to web search instead of using reference files.
-4. **After compaction or context loss**, re-read this SKILL.md to restore awareness of the reference table and operating procedure before continuing work.
+4. **After compaction or context loss**, re-read this SKILL.md to restore awareness of the reference map and operating procedure before continuing work.
 
 ## Scope
 
@@ -27,6 +27,7 @@ Use this Skill for VeBetterDAO ecosystem development:
 - Sustainability proofs and impact codes
 - App submission process to VeBetterDAO
 - Governance: VeVote, proposals, voting, quadratic funding, allocation rounds
+- B3MO Quests: quest creation, invitations, joining/leaving, claims, refunds, and indexer/frontend flows
 
 ## Operating procedure
 
@@ -56,9 +57,8 @@ A task is **not complete** until all applicable gates pass:
 
 Read the matching files BEFORE doing anything else. See Critical Rules above.
 
-| Topic | File | Read when user mentions... |
-|-------|------|---------------------------|
-| VeBetterDAO | [references/vebetterdao.md](references/vebetterdao.md) | X2Earn, B3TR, sustainability, rewards, VeBetterDAO, impact codes, app submission |
-| Governance | [references/governance.md](references/governance.md) | VeVote, governance, voting, VOT3, proposal, steering committee, quadratic funding, allocation rounds |
-| Contracts: tokens & apps | [references/contracts-tokens-apps.md](references/contracts-tokens-apps.md) | B3TR, VOT3, Emissions, XAllocationVoting, XAllocationPool, X2EarnRewardsPool, X2EarnApps, X2EarnCreator, DBAPool, endorsement, reward distribution |
-| Contracts: governance & identity | [references/contracts-governance-identity.md](references/contracts-governance-identity.md) | B3TRGovernor, proposals, VoterRewards, GalaxyMember, Treasury, TimeLock, RelayerRewardsPool, GrantsManager, B3TRMultiSig, VeBetterPassport, signaling, entity linking, upgradeability |
+- **VeBetterDAO**: [references/vebetterdao.md](references/vebetterdao.md) — read for X2Earn, B3TR, sustainability, rewards, VeBetterDAO, impact codes, app submission.
+- **Governance**: [references/governance.md](references/governance.md) — read for VeVote, governance, voting, VOT3, proposal, steering committee, quadratic funding, allocation rounds.
+- **B3MO Quests**: [references/b3mo-quests.md](references/b3mo-quests.md) — read for B3MO quests, quests, b3mo-quests, B3TRChallenges, SplitWin, MaxActions, quest invite, join quest, leave quest, claim prize, claim refund, quest indexer.
+- **Contracts: tokens & apps**: [references/contracts-tokens-apps.md](references/contracts-tokens-apps.md) — read for B3TR, VOT3, Emissions, XAllocationVoting, XAllocationPool, X2EarnRewardsPool, X2EarnApps, X2EarnCreator, DBAPool, endorsement, reward distribution.
+- **Contracts: governance & identity**: [references/contracts-governance-identity.md](references/contracts-governance-identity.md) — read for B3TRGovernor, proposals, VoterRewards, GalaxyMember, Treasury, TimeLock, RelayerRewardsPool, GrantsManager, B3TRMultiSig, VeBetterPassport, signaling, entity linking, upgradeability.
