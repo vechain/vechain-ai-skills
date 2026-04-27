@@ -132,6 +132,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       }}
       // No privy prop needed — uses VeChain's shared credentials
+
+      // Contract address overrides (optional) — for custom deployments on solo/testnet
+      // contractAddresses={{
+      //   b3trContractAddress: '0x...',
+      //   vot3ContractAddress: '0x...',
+      // }}
     >
       {children}
     </VeChainKitProvider>
@@ -219,8 +225,11 @@ import { IB3TR__factory } from '@vechain/vechain-kit/contracts';
 import { humanAddress } from '@vechain/vechain-kit/utils';
 
 // Network config (contract addresses, chain IDs)
-import { getConfig } from '@vechain/vechain-kit';
+import { getConfig, useAppConfig } from '@vechain/vechain-kit';
 const b3trAddress = getConfig('main').b3trContractAddress;
+// In React components, prefer useAppConfig() — it respects contractAddresses overrides
+const config = useAppConfig();
+const b3tr = config.b3trContractAddress;
 ```
 
 ## Login Methods
@@ -253,6 +262,32 @@ Filter which ecosystem apps appear when using `{ method: 'ecosystem' }`:
   }}
 >
 ```
+
+## Contract Address Overrides
+
+Override default contract addresses for custom deployments (e.g., solo or testnet with your own B3TR/VOT3 instances). Accepts `Partial<AppConfig>` — only provided fields are overridden:
+
+```tsx
+<VeChainKitProvider
+  network={{ type: 'solo' }}
+  contractAddresses={{
+    b3trContractAddress: '0x026771d1be764467f8bdb78bb230df10c924b00d',
+    vot3ContractAddress: '0xf7a08af15cb3501feee53ebe11f4428a966fa459',
+    // Any AppConfig field can be overridden
+  }}
+>
+```
+
+Access the merged config (defaults + overrides) in components with `useAppConfig`:
+
+```tsx
+import { useAppConfig } from '@vechain/vechain-kit';
+
+const config = useAppConfig();
+const b3trAddress = config.b3trContractAddress; // overridden value if provided
+```
+
+`useAppConfig` is preferred over `getConfig()` inside React components, as it respects provider overrides. `getConfig()` only returns built-in network defaults.
 
 ## Legal Documents (Optional)
 

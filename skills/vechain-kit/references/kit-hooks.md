@@ -319,13 +319,28 @@ const { data: events } = useEvents({                   // Contract events
 });
 ```
 
-## Network Utility Hooks
+## Network & Config Hooks
 
 ```tsx
-import { useGetChainId, useGetNodeUrl } from '@vechain/vechain-kit';
+import { useGetChainId, useGetNodeUrl, useAppConfig } from '@vechain/vechain-kit';
 
 const { data: chainId } = useGetChainId();   // Chain ID from genesis block
 const nodeUrl = useGetNodeUrl();              // Current node URL (custom or default)
+```
+
+### useAppConfig -- Merged Network Config
+
+Returns the full `AppConfig` for the current network, with any `contractAddresses` overrides from the provider applied. Prefer this over `getConfig()` inside React components.
+
+```tsx
+import { useAppConfig } from '@vechain/vechain-kit';
+
+function MyComponent() {
+  const config = useAppConfig();
+  // config.b3trContractAddress — uses provider override if set, otherwise network default
+  // config.vot3ContractAddress
+  // config.nodeUrl, config.explorerUrl, etc.
+}
 ```
 
 ## Legal Documents Hook
