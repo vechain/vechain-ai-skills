@@ -42,10 +42,13 @@ Citizens inherit navigator's decision multiplier. Both multipliers stack multipl
 
 ## Navigator System
 
-### Registration
+### Registration & Staking
 - Permissionless — stake minimum 50,000 B3TR in NavigatorRegistry
+- Staked B3TR is converted to VOT3 under the hood — **counts as navigator's voting power** (checkpointed)
+- NavigatorRegistry self-delegates on VOT3 during initialization; per-navigator amounts queried via `getStakedAmountAtTimepoint`
 - 10:1 delegation ratio: stake >= 10% of total delegated VOT3
 - Max stake: 1% of circulating VOT3 (enforced at deposit only)
+- On slash/withdraw: VOT3 converted back to B3TR before transfer
 - On-chain reports mandatory at least once every 2 rounds
 
 ### Delegation
@@ -67,7 +70,7 @@ Citizens inherit navigator's decision multiplier. Both multipliers stack multipl
 - **Allocation**: `XAllocationVoting.castNavigatorVote(citizen, roundId)` — navigator's custom percentages (basis points, sum to 10000)
 - **Governance**: `B3TRGovernor.castNavigatorVote(proposalId, citizen)` — navigator's decision (For/Against/Abstain)
 - Voting power = delegated amount at snapshot (checkpointed), not full balance
-- Navigator setting preferences/decisions = their own vote (personal VOT3 only)
+- Navigator setting preferences/decisions = their own vote (personal VOT3 + staked B3TR converted to VOT3)
 
 ### Rewards & Fees
 ```

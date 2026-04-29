@@ -160,13 +160,13 @@ Manages rewards for relayers performing auto-voting and navigator citizen voting
 
 ## NavigatorRegistry (V1)
 
-UUPS upgradeable contract managing navigator registration, citizen delegation, voting preferences, fees, slashing, and lifecycle. Facade with 6 external libraries.
+UUPS upgradeable contract managing navigator registration, citizen delegation, voting preferences, fees, slashing, and lifecycle. Facade with 6 external libraries. **Staked B3TR is converted to VOT3 under the hood and counts as the navigator's voting power** (checkpointed via `Checkpoints.Trace208`). NavigatorRegistry self-delegates on VOT3 during initialization.
 
 | Function | Description |
 |----------|-------------|
-| `register(amount, metadataURI)` | Register as navigator by staking B3TR (min 50K) |
-| `addStake(amount)` / `reduceStake(amount)` | Manage B3TR stake |
-| `withdrawStake(amount)` | Withdraw after exit/deactivation |
+| `register(amount, metadataURI)` | Register as navigator by staking B3TR (min 50K, converted to VOT3) |
+| `addStake(amount)` / `reduceStake(amount)` | Manage B3TR stake (B3TR↔VOT3 conversion) |
+| `withdrawStake(amount)` | Withdraw after exit/deactivation (VOT3→B3TR) |
 | `delegate(navigator, amount)` | Delegate VOT3 to navigator |
 | `increaseDelegation(amount)` | Add more VOT3 |
 | `reduceDelegation(amount)` / `undelegate()` | Reduce or remove delegation |
@@ -180,8 +180,9 @@ UUPS upgradeable contract managing navigator registration, citizen delegation, v
 | `deactivateNavigator(navigator, slashPct, slashFees)` | Governance action: deactivate + optional slash |
 | `getTotalDelegatedCitizensAtTimepoint(timepoint)` | Historical total citizen count |
 | `getDelegatedAmountAtTimepoint(citizen, timepoint)` | Historical delegation amount |
+| `getStakedAmountAtTimepoint(navigator, timepoint)` | Historical staked amount (used by VotesUtils/GovernorVotesLogic for voting power) |
 
-**Storage:** `Checkpoints.Trace208 totalDelegatedCitizens`, `mapping(address => uint256) navigatorCitizenCount`, fee escrow per navigator per round.
+**Storage:** `Checkpoints.Trace208 totalDelegatedCitizens`, `mapping(address => Checkpoints.Trace208) stakedAmount` (checkpointed for snapshot voting power), `mapping(address => uint256) navigatorCitizenCount`, fee escrow per navigator per round.
 
 **Libraries:** NavigatorStakingUtils, NavigatorDelegationUtils, NavigatorVotingUtils, NavigatorFeeUtils, NavigatorSlashingUtils, NavigatorLifecycleUtils.
 
