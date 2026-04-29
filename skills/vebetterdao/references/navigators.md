@@ -38,7 +38,7 @@ Applied in `GovernorVotesLogic` before `registerVote()`. Per-proposal, independe
 | For / Against | x1 (10000 bp) |
 | Abstain | x0.30 (3000 bp) |
 
-Citizens inherit navigator's decision multiplier. Both multipliers stack multiplicatively with GM multiplier.
+Citizens inherit navigator's decision multiplier. Freshness scales allocation reward weight; intent scales governance reward weight. GM is **not** stacked with them — when the GM pool is funded (v5+ live config), GM accumulates its own separate per-voter weight claimed against the GM pool, independent of allocation/governance reward weight.
 
 ## Navigator System
 

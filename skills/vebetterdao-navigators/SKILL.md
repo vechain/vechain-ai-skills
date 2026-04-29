@@ -43,10 +43,11 @@ Applied in `GovernorVotesLogic` before `registerVote()`. Per-proposal at registr
 - Governance-configurable via `VoterRewards.setIntentMultipliers(forAgainst, abstain)`
 - Navigator-delegated citizens **inherit navigator's decision multiplier**
 
-### Multiplier stacking
+### Multiplier scope
 
-- Multiplicative with existing GM multiplier: `weight * freshness_or_intent * GM`
-- Each multiplier scoped to its voting type (freshness -> allocation, intent -> governance)
+- **Freshness** scales reward weight for allocation rewards only (in `RoundVotesCountingUtils.countVote()`)
+- **Intent** scales reward weight for governance rewards only (in `GovernorVotesLogic` before `registerVote`)
+- **GM is not stacked with freshness/intent.** When the GM pool is funded (v5+ live config), GM accumulates its own separate per-voter weight in `cycleToVoterToGMWeight`, claimed against the GM pool — it does not multiply the allocation/governance reward weight. The legacy `weight * GM` path in `VoterRewards.registerVote()` only runs when `gmPoolAmount == 0`
 - Scale: basis points (10000 = 1x)
 
 ### Safe upgrade
