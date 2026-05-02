@@ -56,7 +56,8 @@ Citizens inherit navigator's decision multiplier. Freshness scales allocation re
 - VOT3 reads lock from NavigatorRegistry (`getDelegatedAmount`) — no mapping on VOT3
 - One navigator per citizen, snapshotted at round start
 - Partial undelegation allowed (takes effect next round)
-- No personhood check. Citizens can't vote manually while delegated
+- No personhood check to delegate. Personhood validated at vote time (snapshot); non-person citizens are skipped
+- Citizens can't vote manually while delegated
 - Auto-voting disabled on delegation
 
 | Function | Purpose |
@@ -94,7 +95,7 @@ Citizens inherit navigator's decision multiplier. Freshness scales allocation re
 
 ### Relayer Integration
 - Citizens ARE counted in expected actions: `allocationUsers = autoVoting + citizens`, `governanceUsers = citizens only`
-- `castNavigatorVote` includes skip-or-vote logic with 720-block skip window
+- `castNavigatorVote` includes skip-or-vote logic with 720-block skip window (skips for: citizen not a person at snapshot, navigator dead now, no preferences/decision at skip window)
 - Per-user skip tracking in RelayerRewardsPool V3 (`reduceUserAllocationVote`, `reduceUserGovernanceVote`)
 - Governance votes registered as `RelayerAction.VOTE` — relayers earn credit
 

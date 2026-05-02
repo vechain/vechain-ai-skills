@@ -85,7 +85,7 @@ Applied in `GovernorVotesLogic` before `registerVote()`. Per-proposal at registr
 - **One navigator per citizen**
 - **Snapshotted at round start** — mid-round changes take effect next round
 - **Partial undelegation allowed** (takes effect next round)
-- **No personhood check** for citizens delegated to a navigator
+- **No personhood check to delegate**. Personhood validated at vote time (snapshot); non-person citizens are skipped
 - Citizens **cannot vote manually** while delegated — must exit delegation first
 - Auto-voting is **disabled** when delegating (NavigatorRegistry calls `XAllocationVoting.disableAutoVotingFor`)
 - Non-delegated VOT3 is idle (earns nothing)
@@ -115,7 +115,7 @@ NavigatorRegistry tracks delegated citizens globally:
 Two separate functions (NOT merged):
 - `castVoteOnBehalfOf(voter, roundId)` — existing auto-voting flow (unchanged)
 - `castNavigatorVote(citizen, roundId)` — navigator-delegated citizens:
-  - NO personhood check
+  - Personhood validated at snapshot — non-person citizens are skipped (not reverted), matching `castVoteOnBehalfOf` behavior
   - Voting power = **delegated amount at round snapshot** (checkpointed, NOT full balance)
   - Navigator's app preferences and percentages (custom weight distribution in basis points, must sum to 10000; max 15 apps)
   - Each citizen = separate transaction
@@ -158,10 +158,11 @@ Navigator setting preferences = their own vote (personal VOT3 balance + staked B
 `castNavigatorVote` (both allocation and governance) merges vote and skip into a single function:
 
 1. Navigator dead at snapshot → revert `NotDelegatedToNavigator` (citizen was never delegated)
-2. Navigator dead NOW (exited/deactivated after snapshot) → skip immediately, reduce expected actions
-3. Navigator alive + preferences/decision set → vote normally
-4. Navigator alive + no preferences/decision + **skip window reached** → skip, reduce expected actions
-5. Navigator alive + no preferences/decision + skip window NOT reached → revert (relayer retries later)
+2. Citizen not a person at snapshot → skip immediately, reduce expected actions (`NavigatorVoteSkipped` / `NavigatorGovernanceVoteSkipped`)
+3. Navigator dead NOW (exited/deactivated after snapshot) → skip immediately, reduce expected actions
+4. Navigator alive + preferences/decision set → vote normally
+5. Navigator alive + no preferences/decision + **skip window reached** → skip, reduce expected actions
+6. Navigator alive + no preferences/decision + skip window NOT reached → revert (relayer retries later)
 
 Skip window = 2 hours (~720 blocks) before round/proposal deadline. Constants: `CITIZEN_SKIP_WINDOW_BLOCKS` (allocation), `GOVERNANCE_SKIP_WINDOW_BLOCKS` (governance).
 
@@ -323,7 +324,7 @@ Delegated VOT3 never leaves the citizen's wallet. Navigator decides what to vote
 
 ### Dependencies (read-only)
 - `VOT3.sol` — circulating supply for max stake cap
-- `VeBetterPassport` — personhood checks (skipped for navigated citizens)
+- `VeBetterPassport` — personhood checks (validated at snapshot for navigated citizens; non-persons skipped)
 - `RelayerRewardsPool` — relayer registration check, preferredRelayer, per-user skip tracking
 - `B3TRGovernor` — active proposals query at round start
 
