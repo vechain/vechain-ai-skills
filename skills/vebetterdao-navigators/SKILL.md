@@ -226,21 +226,32 @@ Inside NavigatorRegistry: `mapping(navigator => mapping(round => amount))`
 
 Reportable by anyone via public function. Slashed funds to treasury.
 
-Five infraction types:
-1. **Missed allocation vote** — had citizens, didn't set preferences for a round
-2. **Missed governance proposal vote** — had citizens, didn't set decision during proposal's voting period
-3. **Stale allocation preferences** — no update >= 3 rounds (same threshold as freshness multiplier)
-4. **Missed report** — no report submitted in 2 consecutive rounds
-5. **Late preferences** — set allocation preferences after `preferenceCutoffPeriod` (~24hr) before round deadline
+Six infraction types:
+1. **Missed allocation vote** — had citizens, didn't set preferences for a round (requires delegations)
+2. **Missed governance proposal vote** — had citizens, didn't set decision during proposal's voting period (requires delegations)
+3. **Stale allocation preferences** — no update >= 3 rounds (same threshold as freshness multiplier) (requires delegations)
+4. **Missed report** — no report submitted in 2 consecutive rounds (requires delegations)
+5. **Late preferences** — set allocation preferences after `preferenceCutoffPeriod` (~24hr) before round deadline (requires delegations)
+6. **Below minimum stake** — stake was below `minStake` at round snapshot (applies **regardless of delegations**)
+
+Infraction flags (bit flags in `NavigatorSlashingUtils`):
+- `FLAG_MISSED_ALLOCATION = 1 << 0` (1)
+- `FLAG_LATE_PREFERENCES = 1 << 1` (2)
+- `FLAG_STALE_PREFERENCES = 1 << 2` (4)
+- `FLAG_MISSED_REPORT = 1 << 3` (8)
+- `FLAG_MISSED_GOVERNANCE = 1 << 4` (16)
+- `FLAG_BELOW_MIN_STAKE = 1 << 5` (32)
 
 Reporting model:
 - Minor reporting is **per round**, not per infraction
 - Anyone calls `reportRoundInfractions(navigator, roundId, proposalIds)` after the round ends
-- Contract evaluates all five infraction types on-chain for that round
+- Contract evaluates all six infraction types on-chain for that round
+- Infractions 1-5 only checked when navigator had delegations at the round snapshot
+- Infraction 6 (below min stake) checked **regardless of delegations** — navigators must maintain their stake above minimum at all times
 - If any infraction is true, exactly **one** minor slash is applied for that round
 - If round is still active, report reverts with `RoundStillActive`
 
-If stake drops below 50K minimum: stays active but **can't accept new delegations** until topped up.
+If stake drops below minimum: stays active but **can't accept new delegations** and **will be slashed** at the end of the round if not resolved.
 
 ### Major (Governance process, up to 100% of stake + locked fees + removal)
 
