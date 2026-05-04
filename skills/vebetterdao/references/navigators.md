@@ -86,6 +86,7 @@ Citizens inherit navigator's decision multiplier. Freshness scales allocation re
 - **Minor**: 5% of current remaining stake (compounding), reportable by anyone via `reportRoundInfractions(navigator, roundId, proposalIds)` after round ends
 - Six infractions: missed allocation vote, missed governance vote, stale preferences (>= 3 rounds), missed report, late preferences, **below minimum stake**
 - Infractions 1-5 require delegations at round snapshot; infraction 6 (below min stake) applies regardless of delegations
+- Below min stake uses two-checkpoint check: below at round start AND still below at round end — gives navigator one full round to recover
 - At most one minor slash per round
 - **Major**: governance process, up to 100% of stake + locked fees + removal
 

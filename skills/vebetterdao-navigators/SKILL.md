@@ -232,7 +232,7 @@ Six infraction types:
 3. **Stale allocation preferences** — no update >= 3 rounds (same threshold as freshness multiplier) (requires delegations)
 4. **Missed report** — no report submitted in 2 consecutive rounds (requires delegations)
 5. **Late preferences** — set allocation preferences after `preferenceCutoffPeriod` (~24hr) before round deadline (requires delegations)
-6. **Below minimum stake** — stake was below `minStake` at round snapshot (applies **regardless of delegations**)
+6. **Below minimum stake** — stake was below `minStake` at round start AND still below at round end (applies **regardless of delegations**)
 
 Infraction flags (bit flags in `NavigatorSlashingUtils`):
 - `FLAG_MISSED_ALLOCATION = 1 << 0` (1)
@@ -248,10 +248,25 @@ Reporting model:
 - Contract evaluates all six infraction types on-chain for that round
 - Infractions 1-5 only checked when navigator had delegations at the round snapshot
 - Infraction 6 (below min stake) checked **regardless of delegations** — navigators must maintain their stake above minimum at all times
+- Below min stake uses a **two-checkpoint check**: `stakeAtRoundStart < minStake AND stakeAtRoundEnd < minStake`. This gives navigators **one full round** to recover after a slash drops their stake.
 - If any infraction is true, exactly **one** minor slash is applied for that round
 - If round is still active, report reverts with `RoundStillActive`
 
-If stake drops below minimum: stays active but **can't accept new delegations** and **will be slashed** at the end of the round if not resolved.
+If stake drops below minimum: stays active but **can't accept new delegations** and **will be slashed** if not topped up by round end.
+
+**Below min stake timing example (minStake = 50K):**
+| Round | Start stake | Event | End stake | belowMinStake? |
+|-------|-------------|-------|-----------|----------------|
+| R3 | 50K | Slashed 5% for missed duties → 47.5K | 47.5K | No (was at min at start) |
+| R4 | 47.5K | Navigator tops up 3K mid-round | 50.5K | No (below at start, recovered by end) |
+| R5 | 50.5K | — | 50.5K | No (above min) |
+
+Vs. if navigator does NOT recover:
+| Round | Start stake | Event | End stake | belowMinStake? |
+|-------|-------------|-------|-----------|----------------|
+| R3 | 50K | Slashed 5% → 47.5K | 47.5K | No (was at min at start) |
+| R4 | 47.5K | No action | 47.5K | **Yes** (below at start AND end) |
+| R5 | 45.125K | Slashed again | 42.87K | **Yes** (cascading) |
 
 ### Major (Governance process, up to 100% of stake + locked fees + removal)
 
