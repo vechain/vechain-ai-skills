@@ -1,11 +1,11 @@
 ---
 name: vebetterdao
-description: VeBetterDAO and X2Earn app development — B3TR/VOT3 tokens, reward distribution, sustainability proofs, app submission, governance, VeVote, quadratic funding, and B3MO Quests.
+description: VeBetterDAO and X2Earn app development — B3TR/VOT3 tokens, reward distribution, sustainability proofs, app submission, governance, VeVote, quadratic funding, B3MO Quests, and navigators.
 allowed-tools: []
 license: MIT
 metadata:
   author: VeChain
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # VeBetterDAO Skill
@@ -27,6 +27,7 @@ Use this Skill for VeBetterDAO ecosystem development:
 - Sustainability proofs and impact codes
 - App submission process to VeBetterDAO
 - Governance: VeVote, proposals, voting, quadratic funding, allocation rounds
+- Navigators: delegation, staking, freshness/intent multipliers, slashing
 - B3MO Quests: quest creation, invitations, joining/leaving, claims, refunds, and indexer/frontend flows
 
 ## Operating procedure
@@ -62,3 +63,4 @@ Read the matching files BEFORE doing anything else. See Critical Rules above.
 - **B3MO Quests**: [references/b3mo-quests.md](references/b3mo-quests.md) — read for B3MO quests, quests, b3mo-quests, B3TRChallenges, SplitWin, MaxActions, quest invite, join quest, leave quest, claim prize, claim refund, quest indexer.
 - **Contracts: tokens & apps**: [references/contracts-tokens-apps.md](references/contracts-tokens-apps.md) — read for B3TR, VOT3, Emissions, XAllocationVoting, XAllocationPool, X2EarnRewardsPool, X2EarnApps, X2EarnCreator, DBAPool, endorsement, reward distribution.
 - **Contracts: governance & identity**: [references/contracts-governance-identity.md](references/contracts-governance-identity.md) — read for B3TRGovernor, proposals, VoterRewards, GalaxyMember, Treasury, TimeLock, RelayerRewardsPool, GrantsManager, B3TRMultiSig, VeBetterPassport, signaling, entity linking, upgradeability.
+- **Navigators**: [references/navigators.md](references/navigators.md) — navigator, navigators, delegation, staking, slashing, NavigatorRegistry, freshness multiplier, governance intent multiplier, navigator fee, citizen voting.
