@@ -144,7 +144,7 @@ Skip-or-vote decision flow (merged into the function, no separate skip call):
 4. Navigator alive + no preferences + skip window reached → skip, emit `NavigatorVoteSkipped`
 5. Navigator alive + no preferences + skip window NOT reached → revert `SkipWindowNotReached`
 
-Skip window: `CITIZEN_SKIP_WINDOW_BLOCKS = 720` (~2 hours before round deadline)
+Skip window: `XAllocationVoting.citizenSkipWindowBlocks()` — storage-configurable (V9 migration), default ~720 blocks (~2 hours before round deadline). Read from chain via the getter; do not hardcode — governance can update it via `setCitizenSkipWindowBlocks` and the value can differ per network.
 
 **`startNewRound()` — expected actions setup:**
 
@@ -168,7 +168,7 @@ Same skip-or-vote pattern as XAllocationVoting:
 4. Navigator alive + no decision + skip window reached → skip, emit `NavigatorGovernanceVoteSkipped`
 5. Navigator alive + no decision + skip window NOT reached → revert `GovernanceSkipWindowNotReached`
 
-Skip window: `GOVERNANCE_SKIP_WINDOW_BLOCKS = 720` (~2 hours before proposal deadline)
+Skip window: `B3TRGovernor.governanceSkipWindowBlocks()` — storage-configurable (V10 migration), default ~720 blocks (~2 hours before proposal deadline). Read from chain via the getter; do not hardcode — governance can update it via `setGovernanceSkipWindowBlocks` and the value can differ per network.
 
 Maps navigator decision: 1=Against, 2=For, 3=Abstain → governor support 0, 1, 2.
 Applies intent multiplier for rewards.
@@ -334,7 +334,7 @@ Citizens ARE counted in expected actions. At round start:
 - `governanceUsers = totalDelegatedCitizens` (for governance votes — citizens only, NOT auto-voters)
 - `governanceUsers` is separate because relayers don't cast governance votes for auto-voting users
 
-The **skip window** (720 blocks / ~2 hours before deadline) + **per-user skip tracking** prevent deadlock: if a navigator fails to set preferences, relayers can skip that citizen's votes once the skip window opens, reducing expected actions proportionally.
+The **skip window** (storage-configurable per network, default ~720 blocks / ~2 hours before deadline — read from `XAllocationVoting.citizenSkipWindowBlocks()` / `B3TRGovernor.governanceSkipWindowBlocks()`) + **per-user skip tracking** prevent deadlock: if a navigator fails to set preferences, relayers can skip that citizen's votes once the skip window opens, reducing expected actions proportionally.
 
 ### Skip-or-vote flow (both allocation and governance)
 
