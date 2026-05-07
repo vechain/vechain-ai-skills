@@ -97,7 +97,68 @@ require(msg.sender == owner, "Not owner");
 
 ---
 
-### 3. Integer Overflow/Underflow
+### 3. State-Bound Invariants & Path Symmetry
+
+**Risk**: A protected invariant (e.g. `inscribed_amount ≤ user_balance`, `total_allocated ≤ total_supply`, `sum(child) ≤ parent`) is enforced on **one** path but not on **all** paths that mutate the same state. Users reach the invariant violation by chaining writes through the unguarded path.
+
+**Anti-pattern**: An adjacent guard appears to enforce the invariant, but it actually only enforces the **reverse direction**. Most common with token locks — the lock stops *outflow* below the locked amount, but does **not** bound how high the locked amount itself can be inscribed.
+
+**Real incident** (VeBetterDAO Navigator delegation, May 2026):
+
+```solidity
+// VOT3 transfer lock — bounds OUTFLOW only
+function _update(address from, ..., uint256 amount) internal {
+  uint256 locked = navRegistry.getDelegatedAmount(from);
+  require(balanceOf(from) - amount >= locked, "exceeds unlocked"); // outflow check
+}
+
+// NavigatorRegistry — INSCRIPTION had no balance check
+function delegate(uint256 amount) external {
+  require(amount >= MIN_DELEGATION); // ✓
+  require(navHasCapacity(amount));   // ✓
+  // missing: require(amount <= balanceOf(msg.sender) - alreadyDelegated)
+  delegated[msg.sender] += amount;
+}
+function increaseDelegation(uint256 amount) external { /* same gap */ }
+```
+
+A user with 3k VOT3 balance called `delegate(3k)` then `increaseDelegation(3k)` and ended with `delegated = 6k`, balance = 3k`. The transfer lock dutifully froze their entire 3k balance forever, "protecting" the inflated delegation.
+
+**Prevention**:
+
+```solidity
+// Add the explicit guard on EVERY write path that grows the locked/inscribed amount
+function delegate(uint256 amount) external {
+  uint256 available = IVOT3(vot3).unlockedBalance(msg.sender);
+  if (amount > available) revert InsufficientUnlockedBalance(msg.sender, amount, available);
+  ...
+}
+function increaseDelegation(uint256 amount) external {
+  uint256 available = IVOT3(vot3).unlockedBalance(msg.sender);
+  if (amount > available) revert InsufficientUnlockedBalance(msg.sender, amount, available);
+  ...
+}
+```
+
+**The discipline — for every protected invariant `inscribed ≤ resource`**:
+
+1. List **every entrypoint** that increases `inscribed` — `set`, `add`, `increase`, batch helpers, migration paths, auto-clear+rewrite paths.
+2. List **every entrypoint** that decreases `resource` — `transfer`, `burn`, `withdraw`, conversion, slashing.
+3. Confirm a guard exists on **all** of (1) AND **all** of (2). One side alone is not enough.
+4. Pay extra attention to comments that claim "enforced elsewhere" — go read the elsewhere and check the *direction* of the check, not just its presence.
+
+**Common shapes of this bug**:
+
+| Invariant | Inscription paths to guard | Resource paths to guard |
+|---|---|---|
+| `delegated[user] ≤ balanceOf(user)` | `delegate`, `increaseDelegation`, migration | `transfer`, `burn`, `convertToB3TR` |
+| `sum(allocations) ≤ totalShares` | `setAllocation`, `addAllocation` | `mintShares`, `redeemShares` |
+| `borrowed ≤ collateral × LTV` | `borrow`, `withdrawCollateral` | `liquidate` (other direction) |
+| `staked[user] ≤ approved[user]` | `stake`, `restake`, `compound` | `approve` (decreases), `unstake` |
+
+---
+
+### 4. Integer Overflow/Underflow
 
 **Risk**: Arithmetic operations wrap around, leading to unexpected values.
 
@@ -127,7 +188,7 @@ uint8 safeValue = SafeCast.toUint8(bigValue); // Reverts if > 255
 
 ---
 
-### 4. Front-Running / MEV
+### 5. Front-Running / MEV
 
 **Risk**: Attackers observe pending transactions and submit their own with higher gas priority.
 
@@ -163,7 +224,7 @@ function swap(uint256 amountIn, uint256 minAmountOut) external {
 
 ---
 
-### 5. Uninitialized Storage / Proxy Vulnerabilities
+### 6. Uninitialized Storage / Proxy Vulnerabilities
 
 **Risk**: Upgradeable contracts can have uninitialized state or storage collisions.
 
@@ -195,7 +256,7 @@ contract MyUpgradeable is Initializable {
 
 ---
 
-### 6. Denial of Service (DoS)
+### 7. Denial of Service (DoS)
 
 **Risk**: Attacker makes a function unusable for legitimate users.
 
@@ -234,7 +295,7 @@ function distributeBatch(uint256 start, uint256 count) external {
 
 ---
 
-### 7. Oracle Manipulation
+### 8. Oracle Manipulation
 
 **Risk**: Price oracles or data feeds can be manipulated to exploit DeFi protocols.
 
@@ -255,7 +316,7 @@ function getPrice() public view returns (uint256) {
 
 ---
 
-### 8. Unsafe External Calls
+### 9. Unsafe External Calls
 
 **Risk**: Low-level calls can fail silently or return unexpected data.
 
@@ -286,7 +347,7 @@ token.safeTransferFrom(sender, recipient, amount);
 
 ---
 
-### 9. Signature Replay
+### 10. Signature Replay
 
 **Risk**: Valid signatures can be reused across transactions, chains, or contexts.
 
@@ -327,6 +388,13 @@ function executeWithSignature(
 - [ ] Use `require` or custom errors for all preconditions
 - [ ] Validate array lengths match when processing parallel arrays
 - [ ] Check for zero amounts in transfer/approval functions
+
+### State-Bound Invariants
+
+- [ ] For each invariant `inscribed ≤ resource`, **every** entrypoint that grows `inscribed` has a guard
+- [ ] For each invariant `inscribed ≤ resource`, **every** entrypoint that shrinks `resource` has a guard
+- [ ] No comment claims "enforced by X" without a verified read of X confirming the *direction* of the check
+- [ ] Sibling entrypoints mutating the same storage share the same guards (e.g. `set` and `add` and `increase`)
 
 ### Access Control
 
@@ -390,7 +458,17 @@ function executeWithSignature(
 
 ## Security Review Procedure
 
-When conducting a security review, follow this three-pass approach to avoid confirmation bias:
+When conducting a security review, follow this four-pass approach to avoid confirmation bias and missed paths.
+
+### Pass 0 — Map paths and invariants
+
+Before looking for bugs, list:
+
+1. **Every entrypoint** that mutates each storage variable (group by storage, not by feature).
+2. **Every cross-contract read** the contract makes, and what it assumes about the other contract's state.
+3. **Every protected invariant** in the form `X ≤ Y` or `sum(children) ≤ parent` — explicit (in `require`) or implicit (assumed by callers).
+
+For each invariant, check that **every entrypoint that grows the left-hand side** has the guard, AND **every entrypoint that shrinks the right-hand side** has the corresponding guard. Missing path-symmetry on a state-bound invariant is the most common high-severity finding — see category #3.
 
 ### Pass 1 — Enumerate (be thorough)
 
@@ -429,3 +507,21 @@ Use these as prompts during Pass 1:
 6. Can an attacker cause a DoS by making a function revert for everyone?
 7. Can an attacker exploit the upgrade mechanism?
 8. Can an attacker manipulate oracle data to misvalue assets?
+9. **Path-symmetry**: For every guard I see on entrypoint A, does the sibling entrypoint B that mutates the same storage have the same guard? If not — why not?
+10. **Direction**: For every guard I rely on, does it bound the value in the direction I think? A check like `balance - amount ≥ locked` bounds *outflow*, not the *inscription* of `locked`.
+11. **Sequencing**: Can a user reach state X by chaining N legal calls? `delegate(max) → increase(max)`, `claim → claim`, `register → exit → re-register`, `setRate → setRate → settle`?
+12. **Boundaries**: What happens at 0, 1 wei, MIN, MIN-1, MAX, MAX+1, exact-resource, resource+1? Has every boundary been tested, not only the middle of the range?
+13. **Cross-contract assumptions**: When I read from contract Y, what if Y returns 0, returns the previous block's value, is paused, has been upgraded, has had its admin role revoked?
+14. **State transitions during the action**: What if the navigator dies, the round ends, the cycle rolls over, the allowance is revoked, the balance drops mid-flow?
+
+## Adversarial Path Coverage in Tests
+
+A feature is not done when the happy path is green. Before declaring done, the test suite must cover:
+
+- **All sibling entrypoints** mutating the same storage (writes, reductions, auto-clears, migrations, batch helpers).
+- **Sequences a user can chain**: `max → increase`, `delegate → switch → delegate`, `claim → claim again`, `enter → exit → re-enter`.
+- **Boundaries**: 0, 1 wei, MIN, MIN-1, MAX, MAX+1, exact-balance, balance+1.
+- **Cross-contract assumptions**: stale reads, lazy invalidation, contract paused, oracle returning a different value than last block.
+- **State transitions during the action**: counter-party dies mid-flow, round ends, reward cycle rolls over, balance drops between read and write.
+
+"It works for the path I coded" is the bug. The user's path is *every* path the contract permits. Before submitting, write down: "could a user reach state X by any sequence?" — and prove the answer with a test, not by reading code.
