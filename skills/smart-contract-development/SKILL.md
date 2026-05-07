@@ -80,4 +80,4 @@ Read the matching files BEFORE doing anything else. See Critical Rules above.
 | Gas optimization | [references/smart-contracts-optimization.md](references/smart-contracts-optimization.md) | gas, optimize, storage packing, assembly, unchecked |
 | Testing | [references/testing.md](references/testing.md) | test, Thor Solo, Docker, CI, fixtures |
 | ABI / codegen | [references/abi-codegen.md](references/abi-codegen.md) | TypeChain, ABI, typechain-types, code generation |
-| Security | [references/security.md](references/security.md) | security, audit, vulnerability, reentrancy, access control |
+| Security | [references/security.md](references/security.md) | security, audit, vulnerability, reentrancy, access control, invariant, balance check, path symmetry, adversarial, edge cases, what could go wrong |
