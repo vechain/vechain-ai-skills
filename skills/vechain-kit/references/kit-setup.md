@@ -249,12 +249,12 @@ From v2.7 the kit owns the **entire VeWorld and Sync2 connection flow** end-to-e
 | `apple`           | Apple OAuth                                                                                                 | **Yes**               | —                                  |
 | `github`          | GitHub OAuth                                                                                                | **Yes**               | —                                  |
 | `more`            | "More options ⌄" link footer → sub-view with overflow wallets / socials (incl. Privy fallback for Twitter/Discord/etc.) / ecosystem apps | **Yes** (for socials)  | —                                  |
-| `dappkit` *(legacy)* | Opens dapp-kit's native picker modal. Preserved for backwards compatibility — prefer the granular methods above | No                    | —                                  |
+| `dappkit` _(legacy)_ | Opens dapp-kit's native picker modal. Preserved for backwards compatibility — prefer the granular methods above | No                    | —                                  |
 
 **Defaults** (when `loginMethods` is omitted):
 
-* With `privy`: `[veworld, google, apple, more]`
-* Without `privy`: `[veworld, sync2, wallet-connect]`
+- With `privy`: `[veworld, google, apple, more]`
+- Without `privy`: `[veworld, sync2, wallet-connect]`
 
 **Important:** Using `email`, `google`, `apple`, `github`, `passkey`, or `more` without the `privy` prop throws: _"Login methods require Privy configuration. Please either remove these methods or configure the privy prop."_ Use `vechain` for free social login (no Privy needed), or provide your own Privy credentials.
 
