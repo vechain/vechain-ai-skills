@@ -20,6 +20,10 @@ const theme: VechainKitThemeConfig = {
     // border, backdropFilter, rounded are optional
   },
   textColor: isDarkMode ? 'rgb(223, 223, 221)' : '#2e2e2e',
+  // Brand accent — spinner top arc, focus rings, "Waiting for signature…"
+  // headline in the connect modal, and the email-submit link when valid.
+  // Defaults: '#3b82f6' (light) / '#60a5fa' (dark).
+  accent: '#ff6600',
   overlay: {
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     blur: 'blur(3px)',
@@ -49,6 +53,7 @@ const theme: VechainKitThemeConfig = {
 |------|-------|-------|
 | `modal` | `{ backgroundColor, border, backdropFilter, rounded, useBottomSheetOnMobile }` | Modal container. `backgroundColor` auto-derives card (80%), header (90%), secondary/tertiary, and border colors. `useBottomSheetOnMobile`: slide-up bottom sheet on mobile |
 | `textColor` | `string` | Auto-derives primary (100%), secondary (70%), tertiary (50%) text |
+| `accent` | `string` | Brand accent. Drives the connect modal's spinner top arc, focus rings, "Waiting for signature…" headline, and the email-submit link when the address is valid. Default `#3b82f6` (light) / `#60a5fa` (dark) |
 | `overlay` | `{ backgroundColor, blur }` | Modal overlay backdrop |
 | `buttons` | `{ primaryButton, secondaryButton, tertiaryButton, loginButton }` | Each: `{ bg, color, border, backdropFilter?, rounded? }` |
 | `fonts` | `{ family, sizes?, weights? }` | `sizes`: `{ small, medium, large }`. `weights`: `{ normal, medium, bold }`. Scoped to Kit components only — does not affect host app |

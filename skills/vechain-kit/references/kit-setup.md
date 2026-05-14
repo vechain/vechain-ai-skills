@@ -113,8 +113,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         description: 'My VeChain dApp',
       }}
       loginMethods={[
-        { method: 'vechain', gridColumn: 4 },  // all social login via VeChain's Privy
-        { method: 'dappkit', gridColumn: 4 },
+        { method: 'veworld', gridColumn: 4 },          // primary CTA — filled, recommended dot
+        { method: 'vechain', gridColumn: 4 },          // all social login via VeChain's Privy
+        { method: 'wallet-connect', gridColumn: 4 },   // WC QR modal triggered programmatically
       ]}
       feeDelegation={{
         delegatorUrl: process.env.NEXT_PUBLIC_DELEGATOR_URL,
@@ -151,11 +152,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
 <VeChainKitProvider
   // ...same config as above, but with individual login methods and privy prop:
   loginMethods={[
-    { method: 'email', gridColumn: 2 },
-    { method: 'google', gridColumn: 2 },
-    { method: 'passkey', gridColumn: 2 },
-    { method: 'more', gridColumn: 2 },
-    { method: 'dappkit', gridColumn: 4 },
+    { method: 'veworld', gridColumn: 4 },  // primary CTA — filled, recommended dot
+    { method: 'google',  gridColumn: 4 },  // outline secondary
+    { method: 'apple',   gridColumn: 4 },  // outline secondary
+    { method: 'more',    gridColumn: 4 },  // sub-view with overflow wallets / socials / ecosystem
   ]}
   privy={{
     appId: process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? '',
@@ -234,19 +234,43 @@ const b3tr = config.b3trContractAddress;
 
 ## Login Methods
 
-| Method | Description | Requires own Privy credentials |
-|--------|-------------|-------------------------------|
-| `vechain` | All social login via VeChain's shared Privy (free, slightly worse UX — VeChain branding, extra redirect) | No |
-| `dappkit` | VeWorld, WalletConnect | No |
-| `ecosystem` | Cross-app ecosystem login | No |
-| `email` | Email-based login | **Yes** — must pass `privy` prop |
-| `passkey` | Biometric/passkey login | **Yes** — must pass `privy` prop |
-| `google` | Google OAuth | **Yes** — must pass `privy` prop |
-| `more` | Additional OAuth providers | **Yes** — must pass `privy` prop |
+From v2.7 the kit owns the **entire VeWorld and Sync2 connection flow** end-to-end — no hand-off to dapp-kit's native picker. WalletConnect still uses WalletConnect's own QR modal (triggered programmatically). The legacy `dappkit` entry is preserved for backwards compatibility.
 
-**Important:** Using `email`, `google`, `passkey`, or `more` without the `privy` prop will throw: _"Login methods require Privy configuration. Please either remove these methods or configure the privy prop."_ Use `vechain` instead for free social login, or provide your own Privy credentials.
+| Method            | Description                                                                                                | Requires Privy        | Gated by `dappKit.allowedWallets` |
+|-------------------|------------------------------------------------------------------------------------------------------------|-----------------------|-----------------------------------|
+| `veworld`         | Custom VeWorld flow + the kit's "Waiting for signature…" view. Primary CTA (filled, recommended dot)        | No                    | Yes — needs `'veworld'`            |
+| `sync2`           | Custom Sync2 flow + same waiting view                                                                       | No                    | Yes — needs `'sync2'`              |
+| `wallet-connect`  | Triggers WalletConnect's QR modal programmatically (kit's loading view sits behind)                         | No                    | Yes — needs `'wallet-connect'`     |
+| `vechain`         | All social login via VeChain's shared Privy (free; slightly worse UX — VeChain branding, extra redirect)    | No                    | —                                  |
+| `ecosystem`       | Footer button → sub-view of x2earn ecosystem apps                                                           | No                    | —                                  |
+| `email`           | Inline email pill + 6-digit code modal                                                                      | **Yes**               | —                                  |
+| `passkey`         | Privy WebAuthn                                                                                              | **Yes**               | —                                  |
+| `google`          | Google OAuth (full-color "G")                                                                              | **Yes**               | —                                  |
+| `apple`           | Apple OAuth                                                                                                 | **Yes**               | —                                  |
+| `github`          | GitHub OAuth                                                                                                | **Yes**               | —                                  |
+| `more`            | "More options ⌄" link footer → sub-view with overflow wallets / socials (incl. Privy fallback for Twitter/Discord/etc.) / ecosystem apps | **Yes** (for socials)  | —                                  |
+| `dappkit` _(legacy)_ | Opens dapp-kit's native picker modal. Preserved for backwards compatibility — prefer the granular methods above | No                    | —                                  |
+
+**Defaults** (when `loginMethods` is omitted):
+
+- With `privy`: `[veworld, google, apple, more]`
+- Without `privy`: `[veworld, sync2, wallet-connect]`
+
+**Important:** Using `email`, `google`, `apple`, `github`, `passkey`, or `more` without the `privy` prop throws: _"Login methods require Privy configuration. Please either remove these methods or configure the privy prop."_ Use `vechain` for free social login (no Privy needed), or provide your own Privy credentials.
 
 **Grid layout:** `gridColumn` controls the width of each login button in a 4-column grid. Use `4` for full width, `2` for half width.
+
+**Driving a single wallet from custom UI:**
+
+```tsx
+import { useConnectWithDappKitSource, useModal } from '@vechain/vechain-kit';
+
+const { setConnectModalContent, openConnectModal } = useModal();
+const { connect } = useConnectWithDappKitSource('veworld', setConnectModalContent);
+//                                              ^^^^^^^^ 'veworld' | 'sync2' | 'wallet-connect'
+
+<button onClick={async () => { openConnectModal(); await connect(); }}>Connect VeWorld</button>
+```
 
 ## Ecosystem Apps
 
