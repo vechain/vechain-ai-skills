@@ -200,6 +200,8 @@ contract MySustainableAppContract {
 
 **Critical**: the contract address must be set as a **Reward Distributor** on the governance dApp before it can call `distributeReward`.
 
+**Round attribution**: if your app lets users accumulate actions and claim later, use the `ForRound` variants (`distributeRewardForRound`, `distributeRewardWithProofForRound`, `distributeRewardWithProofAndMetadataForRound`) to attribute actions to the round they were performed in. These accept an additional `actionRound` parameter (must be > 0) representing the round ID when the action happened. This prevents users from stacking actions across rounds.
+
 ---
 
 ## Managing Distributor Funds
