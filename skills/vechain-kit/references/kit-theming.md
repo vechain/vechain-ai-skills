@@ -69,6 +69,42 @@ const theme: VechainKitThemeConfig = {
 
 VeChain Kit uses Chakra UI v2 internally. When the host app uses Chakra v3, **pin `@chakra-ui/react` to an exact working version** (currently `3.30.0`). Newer v3 releases can change CSS variable generation and break VeChain Kit's button/modal styling (wrong colors, missing backgrounds). Do NOT use `^` ranges like `^3.26.0`.
 
+### `useToken` returns a snapshot, not a CSS variable
+
+Chakra v3's `useToken('colors', 'bg.primary')` returns the **resolved literal color** at render time (e.g. `#1B1D1F`), NOT a CSS variable reference. If you pipe that snapshot into the Kit's `theme` prop, the Kit's modal/card/sticky-header colors **freeze in whichever mode Chakra evaluated first** and stop tracking host theme toggles (next-themes, html.dark, etc.). Only Kit components reading `useVeChainKitConfig().darkMode` directly (e.g. the VeWorld button) will react.
+
+**Wrong:**
+
+```tsx
+// ❌ freezes to whatever mode Chakra evaluated first
+const [bgPrimary, primaryDefault] = useToken('colors', [
+  'bg.primary',
+  'actions.primary.default',
+])
+<VeChainKitProvider theme={{ modal: { backgroundColor: bgPrimary }, ... }} />
+```
+
+**Right — use Chakra v3's `sys.token.var(...)` resolver so the Kit gets a `var(...)` reference that flips at paint time:**
+
+```tsx
+import { useChakraContext } from '@chakra-ui/react'
+
+const sys = useChakraContext()
+const tokVar = (p: string) => sys.token.var(`colors.${p}`) as string
+
+const bgPrimary      = tokVar('bg.primary')              // 'var(--vbd-colors-bg-primary)'
+const primaryDefault = tokVar('actions.primary.default')
+// …etc
+
+<VeChainKitProvider theme={{ modal: { backgroundColor: bgPrimary }, ... }} />
+```
+
+Hardcoding `'var(--vbd-colors-bg-primary)'` strings works too if the `cssVarsPrefix` is fixed.
+
+To verify after wiring: in DevTools, `--chakra-colors-vechain-kit-modal` should resolve to `var(--your-prefix-...)` (and switch on theme toggle), not to a hex literal.
+
+A full repro lives at `examples/next-chakra-v3/` in [vechain/vechain-kit](https://github.com/vechain/vechain-kit).
+
 ## Webpack fallbacks for Next.js
 
 Some VeChain packages (e.g. `@vechain/vebetterdao-relayer-node`) import Node.js modules (`fs`, `net`, `tls`). For Next.js client-side builds, add webpack fallbacks in `next.config.js`:
