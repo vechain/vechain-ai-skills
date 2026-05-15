@@ -136,6 +136,9 @@ Reward pool for X2Earn apps to distribute B3TR to users for sustainable actions.
 | `distributeReward(appId, amount, receiver)` | Basic reward distribution |
 | `distributeRewardWithProof(appId, amount, receiver, proofTypes, proofValues, impactCodes, impactValues, description)` | Distribution with impact tracking |
 | `distributeRewardWithProofAndMetadata(...)` | Distribution with additional JSON metadata |
+| `distributeRewardForRound(appId, amount, receiver, proof, actionRound)` | Basic distribution attributed to a specific round |
+| `distributeRewardWithProofForRound(..., actionRound)` | Distribution with proof attributed to a specific round |
+| `distributeRewardWithProofAndMetadataForRound(..., actionRound)` | Distribution with proof + metadata attributed to a specific round |
 | `toggleRewardsPoolBalance(appId, enable)` | Enable/disable rewards pool for app |
 | `pauseDistribution()` / `unpauseDistribution()` | Admin pause |
 | `addImpactKey()` / `removeImpactKey()` | Manage allowed impact categories |
