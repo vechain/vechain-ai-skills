@@ -113,9 +113,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         description: 'My VeChain dApp',
       }}
       loginMethods={[
-        { method: 'veworld', gridColumn: 4 },          // primary CTA — filled, recommended dot
-        { method: 'vechain', gridColumn: 4 },          // all social login via VeChain's Privy
-        { method: 'wallet-connect', gridColumn: 4 },   // WC QR modal triggered programmatically
+        { method: 'veworld', gridColumn: 4, isPrimary: true },  // recommended CTA — filled, dot
+        { method: 'vechain', gridColumn: 4 },                   // all social login via VeChain's Privy
+        { method: 'wallet-connect', gridColumn: 4 },            // WC QR modal triggered programmatically
       ]}
       feeDelegation={{
         delegatorUrl: process.env.NEXT_PUBLIC_DELEGATOR_URL,
@@ -152,10 +152,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
 <VeChainKitProvider
   // ...same config as above, but with individual login methods and privy prop:
   loginMethods={[
-    { method: 'veworld', gridColumn: 4 },  // primary CTA — filled, recommended dot
-    { method: 'google',  gridColumn: 4 },  // outline secondary
-    { method: 'apple',   gridColumn: 4 },  // outline secondary
-    { method: 'more',    gridColumn: 4 },  // sub-view with overflow wallets / socials / ecosystem
+    { method: 'veworld', gridColumn: 4, isPrimary: true },  // recommended CTA — filled, dot
+    { method: 'google',  gridColumn: 4 },                   // outline secondary
+    { method: 'apple',   gridColumn: 4 },                   // outline secondary
+    { method: 'more',    gridColumn: 4 },                   // sub-view with overflow wallets / socials / ecosystem
   ]}
   privy={{
     appId: process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? '',
@@ -256,9 +256,11 @@ From v2.7 the kit owns the **entire VeWorld and Sync2 connection flow** end-to-e
 - With `privy`: `[veworld, google, apple, more]`
 - Without `privy`: `[veworld, sync2, wallet-connect]`
 
-**Important:** Using `email`, `google`, `apple`, `github`, `passkey`, or `more` without the `privy` prop throws: _"Login methods require Privy configuration. Please either remove these methods or configure the privy prop."_ Use `vechain` for free social login (no Privy needed), or provide your own Privy credentials.
+**Important:** Without the `privy` prop, `email`, `passkey`, and `sms` throw a configuration error (no whitelabel equivalent for those — they need to run inline at the dApp's origin). Everything else (`vechain`, `google`, `apple`, `twitter`, `discord`, `github`, `tiktok`, `line`, `more`, wallet methods) works without your own Privy account.
 
 **Grid layout:** `gridColumn` controls the width of each login button in a 4-column grid. Use `4` for full width, `2` for half width.
+
+**Recommended CTA:** mark one entry with `isPrimary: true` to render it as the recommended CTA — filled inverted surface + green "recommended" dot. If no entry sets `isPrimary`, the kit auto-highlights the first visible method. `isPrimary` on `more` is ignored (it's a footer link). The filled treatment currently supports `veworld`, `google`, `apple`, and `github`; other methods stay outline even if marked primary.
 
 **Driving a single wallet from custom UI:**
 
