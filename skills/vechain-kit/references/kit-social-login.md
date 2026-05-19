@@ -20,7 +20,7 @@ Use when the user asks about: social login, smart accounts, account abstraction,
 
 VeChain Kit ships with social login out of the box — **no Privy account is required**. There are two paths; pick the one that fits your needs.
 
-**Option A: Use VeChain's whitelabel cross-app host (free, no setup, recommended for most apps)**
+### Option A: Use VeChain's whitelabel cross-app host (free, no setup, recommended for most apps)
 
 Omit the `privy` prop entirely. The kit routes social logins through VeChain's whitelabel popup (`cross-app-connect`), which runs on VeChain branding and gives the user **one identity across every kit-integrated dApp**.
 
@@ -35,7 +35,7 @@ What still requires your own Privy (Option B):
 
 Calling an unsupported method without `privy` throws a configuration error pointing to the supported set.
 
-**Option B: Use your own Privy account (full control)**
+### Option B: Use your own Privy account (full control)
 
 Create an app at [privy.io](https://privy.io), retrieve your **App ID** and **Client ID** from the App Settings tab, and pass them to `VeChainKitProvider` (see [setup guide](https://docs.vechainkit.vechain.org/quickstart/setup-privy-optional)):
 ```tsx
@@ -49,7 +49,7 @@ Create an app at [privy.io](https://privy.io), retrieve your **App ID** and **Cl
 
 The `privy` prop also accepts `appearance`, `embeddedWallets`, and other [Privy SDK options](https://docs.privy.io/) as pass-through configuration.
 
-**Option A vs Option B trade-offs:**
+### Option A vs Option B trade-offs
 
 | | Whitelabel cross-app (A) | Self-hosted Privy (B) |
 |---|---|---|
