@@ -274,3 +274,10 @@ Deprecated impact codes: `waste_items`, `people`, `biodiversity`.
 | `distributeReward(appId, amount, receiver, proof)` | Legacy — JSON string proof (deprecated) |
 | `distributeRewardWithProof(appId, amount, receiver, proofTypes, proofValues, impactCodes, impactValues, description)` | Standard — typed arrays for proof and impact |
 | `distributeRewardWithProofAndMetadata(appId, amount, receiver, proofTypes, proofValues, impactCodes, impactValues, description, metadata)` | Extended — adds JSON metadata for off-chain indexing |
+| `distributeRewardForRound(appId, amount, receiver, proof, actionRound)` | Basic distribution attributed to a specific round |
+| `distributeRewardWithProofForRound(..., actionRound)` | Proof distribution attributed to a specific round |
+| `distributeRewardWithProofAndMetadataForRound(..., actionRound)` | Proof + metadata distribution attributed to a specific round |
+
+### Round Attribution
+
+By default, actions are recorded in the current round. If your app allows users to accumulate actions and claim them later, use the `ForRound` variants to attribute actions to the round they were performed in. The `actionRound` parameter must be > 0 and represents the round ID when the action actually happened.
