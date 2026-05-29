@@ -77,13 +77,44 @@ Uses OpenZeppelin **Governor pattern** (AccessControl + UUPSUpgradeable).
 
 ### Governance Proposals
 
-1. Proposer creates proposal with VOT3 deposit
-2. **Deposit threshold**: 2% of total B3TR supply must be deposited in VOT3 → temperature check
+1. Proposer creates proposal with VOT3 deposit (V11 `propose` takes 7 args incl. `maxBudget` for the optional B3TR implementation cost; pass `0` to skip the community-execution flow)
+2. **Deposit threshold**: 2% of total B3TR supply must be deposited in VOT3 → temperature check (capped at 5M VOT3)
 3. If threshold reached before waiting period ends → proposal becomes active
 4. Voting period opens; quorum: **30% of total VOT3 supply** (FOR + AGAINST + ABSTAIN all count)
 5. If quorum met and "yes" > "no" → queued to TimeLock → executed after delay
+6. After Executed (or Succeeded for non-actionable) → V11 Community Execution flow takes over (see section below)
 
 **Deposits count as allocation voting power**: locked VOT3 deposits are included in the XAllocation snapshot and grant voting power in allocation rounds even while locked.
+
+### Community Execution Framework (V11)
+
+Standard proposals with `maxBudget > 0` carry an on-chain B3TR implementation cost that is paid out after delivery. Grants are NOT in this flow — they use milestone payouts via `proposeGrant`.
+
+**Lifecycle (V11 states)**:
+
+```
+Pending → Active → Succeeded → Queued → Executed → InDevelopment → Completed → (Paid)
+                  ↘ Defeated / DepositNotMet / Canceled
+```
+
+**Key entrypoints on `B3TRGovernor` v11**:
+
+| Function | Caller | Purpose |
+|---|---|---|
+| `propose(targets, values, calldatas, description, startRoundId, depositAmount, maxBudget)` | Anyone meeting standard requirements | Lock the implementation cost at creation. `maxBudget = 0` disables the community-execution flow. |
+| `markAsInDevelopment(proposalId, payee, description, implementationDiscussion, contributors[])` | Proposer **or** `PROPOSAL_STATE_MANAGER_ROLE` | One-shot. Registers the single payout address + metadata. Requires `Executed` (or `Succeeded` if non-executable). When `maxBudget > 0`, `payee` must be non-zero; when `maxBudget == 0`, `payee` must be zero. |
+| `updateCommunityExecution(proposalId, payee, description, implementationDiscussion, contributors[])` | Proposer **or** `PROPOSAL_STATE_MANAGER_ROLE` | Replace any field while proposal is `InDevelopment` or `Completed` AND `claimPayout` not yet called. |
+| `markAsCompleted(proposalId)` | `PROPOSAL_STATE_MANAGER_ROLE` only | Flip dev state to `Completed` once delivery is verified. |
+| `claimPayout(proposalId)` | **Anyone** (idempotent) | Pulls the full `maxBudget` from Treasury to the registered payee in a single B3TR transfer. Requires `Completed`. |
+| `resetDevelopmentState(proposalId)` | `PROPOSAL_STATE_MANAGER_ROLE` only | Admin escape hatch. |
+
+**Funds flow**: `maxBudget` is a commitment, not an escrow. B3TR stays in Treasury until `claimPayout`, which calls `Treasury.transferB3TR(payee, maxBudget)`. The Governor must hold `Treasury.GOVERNANCE_ROLE` (granted as part of the V11 upgrade).
+
+**Contributors**: `contributors[]` is an on-chain string array (GitHub/X handles or URLs) for attribution only, capped at `maxContributorsPerProposal` (currently 20). The single `payee` receives the full budget — distribution to contributors happens off-chain.
+
+**Events**: `ProposalBudgetSet`, `ProposalInDevelopment`, `ProposalInDevelopmentDetails`, `ProposalContributorsSet`, `ProposalCompleted`, `ProposalPayoutClaimed`, `ProposalDevelopmentStateReset`.
+
+**Key errors**: `InvalidPayeeAddress`, `MissingProposalBudget`, `TooManyContributors`, `PayeesAlreadyFinalized`, `PayoutAlreadyClaimed`, `NotReadyToClaim`, `UnauthorizedCommunityExecution`.
 
 ### Allocation Rounds
 
@@ -127,13 +158,14 @@ Uses OpenZeppelin **Governor pattern** (AccessControl + UUPSUpgradeable).
 
 - **Voting Period**: must equal or be shorter than Emissions cycle
 - **Quorum**: 30% of total VOT3 supply
-- **Deposit Threshold**: 2% of total B3TR supply (in VOT3)
+- **Deposit Threshold**: 2% of total B3TR supply (in VOT3), capped at 5M VOT3
 - **Voting Threshold**: minimum 1 VOT3 to vote
 - **Minimum Voting Delay**: 3 days (PENDING → active)
 - **Timelock Minimum Delay**: wait time before execution after queuing
 - **Function Restrictions**: can enable/disable whitelist of callable contract functions
 - **Allocation Cap**: 20% max per app
 - **Base Allocation %**: 0% (currently all vote-based)
+- **`maxContributorsPerProposal`** (V11): cap on V11 contributors array — currently 20, set at V11 upgrade, no runtime setter (changing requires a Governor upgrade)
 
 ---
 
