@@ -9,13 +9,13 @@ Auto-generated docs: [vechain.github.io/vebetterdao-contracts](https://vechain.g
 
 ---
 
-## B3TRGovernor (V10)
+## B3TRGovernor (V11)
 
-Main governance contract. Community creates proposals, deposits VOT3, votes with quadratic voting, and executes through TimeLock. V10 added navigator governance voting and relayer integration.
+Main governance contract. Community creates proposals, deposits VOT3, votes with quadratic voting, executes through TimeLock, and (V11) pays out an on-chain implementation cost after delivery is confirmed. V11 added the **Community Execution Framework** on top of V10's navigator governance voting and relayer integration.
 
 | Function | Description |
 |----------|-------------|
-| `propose(...)` | Create proposal with deposit requirement and start round |
+| `propose(targets, values, calldatas, description, startRoundId, depositAmount, maxBudget)` | Create proposal with deposit requirement, start round, and optional V11 B3TR implementation cost (`maxBudget = 0` disables the community-execution flow) |
 | `deposit(proposalId, amount)` | Contribute VOT3 to activate proposal |
 | `castVote(proposalId, support)` | Vote: 0=against, 1=for, 2=abstain. Reverts with `DelegatedToNavigator` for delegated citizens |
 | `castVoteWithReason(proposalId, support, reason)` | Vote with reason string |
@@ -25,6 +25,11 @@ Main governance contract. Community creates proposals, deposits VOT3, votes with
 | `execute(proposalId)` | Execute via TimeLock |
 | `cancel(proposalId)` | Cancel proposal |
 | `withdraw(proposalId)` | Recover deposits after voting |
+| `markAsInDevelopment(proposalId, payee, description, implementationDiscussion, contributors[])` | **V11.** Register the V11 community-execution payee + metadata. Proposer or `PROPOSAL_STATE_MANAGER_ROLE`. One-shot. |
+| `updateCommunityExecution(proposalId, payee, description, implementationDiscussion, contributors[])` | **V11.** Replace V11 fields while `InDevelopment`/`Completed` and unpaid. Proposer or `PROPOSAL_STATE_MANAGER_ROLE`. |
+| `markAsCompleted(proposalId)` | **V11.** Flip dev state to `Completed`. `PROPOSAL_STATE_MANAGER_ROLE` only. |
+| `claimPayout(proposalId)` | **V11.** Public, idempotent. Transfers full `maxBudget` from Treasury to registered payee. Requires `Completed`. |
+| `resetDevelopmentState(proposalId)` | **V11.** Admin escape hatch (`PROPOSAL_STATE_MANAGER_ROLE`). |
 | `getQuadraticVotingPower(account, timepoint)` | Quadratic voting power |
 | `toggleQuadraticVoting(roundId)` | Enable/disable per round |
 | `setNavigatorRegistry(address)` | Set NavigatorRegistry address |
@@ -32,7 +37,17 @@ Main governance contract. Community creates proposals, deposits VOT3, votes with
 
 **V10 storage:** `INavigatorRegistry navigatorRegistry`, `IRelayerRewardsPool relayerRewardsPool`, `mapping(uint256 => uint256[]) proposalsForRound` (populated at proposal creation).
 
+**V11 storage additions:** `proposalMaxBudget`, `proposalPayee`, `proposalDescription`, `proposalImplementationDiscussion`, `proposalContributors`, `proposalPayeesFinalized`, `proposalPaid`, `proposalDevelopmentState`, `maxContributorsPerProposal` (currently 20, no runtime setter).
+
+**ProposalState enum (V11):** adds `InDevelopment` and `Completed` after `Executed`.
+
 **V10 events:** `NavigatorGovernanceVoteCast`, `NavigatorGovernanceVoteSkipped`.
+
+**V11 events:** `ProposalBudgetSet(proposalId, maxBudget)`, `ProposalInDevelopment(proposalId)`, `ProposalInDevelopmentDetails(proposalId, payee, description, implementationDiscussion)`, `ProposalContributorsSet(proposalId, contributors)`, `ProposalCompleted(proposalId)`, `ProposalPayoutClaimed(proposalId, payee, amount)`, `ProposalDevelopmentStateReset(proposalId)`.
+
+**V11 errors:** `InvalidPayeeAddress`, `MissingProposalBudget`, `TooManyContributors`, `PayeesAlreadyFinalized`, `PayoutAlreadyClaimed`, `NotReadyToClaim`, `UnauthorizedCommunityExecution`.
+
+**V11 Treasury role:** Governor must hold `Treasury.GOVERNANCE_ROLE` to forward `claimPayout` via `Treasury.transferB3TR(payee, maxBudget)` — granted as part of the V11 upgrade.
 
 **V10 `castNavigatorVote` skip-or-vote flow:**
 1. Navigator dead at snapshot → revert `NotDelegatedToNavigator`
