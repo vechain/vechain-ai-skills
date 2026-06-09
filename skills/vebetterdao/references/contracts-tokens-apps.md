@@ -127,21 +127,28 @@ Unallocated amounts (apps that didn't claim, rounding remainders) are sent to Tr
 
 ## X2EarnRewardsPool
 
-Reward pool for X2Earn apps to distribute B3TR to users for sustainable actions.
+Reward pool for X2Earn apps. **V9** separates the two reward flows so passport personhood reflects sustainable activity only:
 
-| Function | Description |
-|----------|-------------|
-| `deposit(amount, appId)` | Fund rewards pool for an app |
-| `withdraw(amount, appId, reason)` | Admin withdrawal to team wallet |
-| `distributeReward(appId, amount, receiver)` | Basic reward distribution |
-| `distributeRewardWithProof(appId, amount, receiver, proofTypes, proofValues, impactCodes, impactValues, description)` | Distribution with impact tracking |
-| `distributeRewardWithProofAndMetadata(...)` | Distribution with additional JSON metadata |
-| `distributeRewardForRound(appId, amount, receiver, proof, actionRound)` | Basic distribution attributed to a specific round |
-| `distributeRewardWithProofForRound(..., actionRound)` | Distribution with proof attributed to a specific round |
-| `distributeRewardWithProofAndMetadataForRound(..., actionRound)` | Distribution with proof + metadata attributed to a specific round |
-| `toggleRewardsPoolBalance(appId, enable)` | Enable/disable rewards pool for app |
-| `pauseDistribution()` / `unpauseDistribution()` | Admin pause |
-| `addImpactKey()` / `removeImpactKey()` | Manage allowed impact categories |
+- **Sustainable rewards** — `distributeRewardWithProof*` family. Proof arrays (`proofTypes` / `proofValues`) are now **mandatory** (empty arrays revert with `"X2EarnRewardsPool: proof is mandatory"`). Registers a passport action via `veBetterPassport.registerAction[ForRound]`.
+- **Bonus / secondary rewards** — `distributeNonProofReward(appId, amount, receiver, NonProofRewardCategory category, description)`. Does **NOT** register a passport action. Emits the dedicated `NonProofRewardDistributed` event with a typed category (`Endorser` / `Leaderboard` / `Streak` / `Cashback` / `Referral` / `Other`).
+- **Legacy** — `distributeReward` is marked deprecated in V9 but kept for backward compatibility. `distributeRewardDeprecated*` remain available for the legacy JSON-string proof flow.
+
+| Function | Description | V9 status |
+|----------|-------------|-----------|
+| `deposit(amount, appId)` | Fund rewards pool for an app | — |
+| `withdraw(amount, appId, reason)` | Admin withdrawal to team wallet | — |
+| `distributeRewardWithProof(appId, amount, receiver, proofTypes, proofValues, impactCodes, impactValues, description)` | Sustainable distribution with impact tracking | **Proof mandatory** — registers passport action |
+| `distributeRewardWithProofAndMetadata(...)` | Sustainable distribution with additional JSON metadata | **Proof mandatory** — registers passport action |
+| `distributeRewardWithProofForRound(..., actionRound)` | Sustainable distribution attributed to a specific round | **Proof mandatory** — registers passport action |
+| `distributeRewardWithProofAndMetadataForRound(..., actionRound)` | Sustainable distribution with proof + metadata attributed to a round | **Proof mandatory** — registers passport action |
+| `distributeNonProofReward(appId, amount, receiver, NonProofRewardCategory category, description)` | **V9** — bonus / non-sustainable payout | Does **NOT** register a passport action. Emits `NonProofRewardDistributed`. No `ForRound` variant. |
+| `distributeReward(appId, amount, receiver, proof)` | Legacy no-proof distribution | **DEPRECATED V9** (kept for backward compatibility) |
+| `distributeRewardForRound(appId, amount, receiver, proof, actionRound)` | Legacy no-proof distribution attributed to a round | Same migration path as `distributeReward` |
+| `distributeRewardDeprecated(appId, amount, receiver, proof)` | Legacy JSON-string proof | Pre-existing deprecation |
+| `distributeRewardDeprecatedForRound(appId, amount, receiver, proof, actionRound)` | **V9** — round-attribution counterpart of `distributeRewardDeprecated` | Pre-existing deprecation scheme |
+| `toggleRewardsPoolBalance(appId, enable)` | Enable/disable rewards pool for app | — |
+| `pauseDistribution()` / `unpauseDistribution()` | Admin pause | — |
+| `addImpactKey()` / `removeImpactKey()` | Manage allowed impact categories | — |
 
 | Role | Can |
 |------|-----|
