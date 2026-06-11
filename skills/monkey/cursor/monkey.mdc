@@ -58,19 +58,28 @@ errors/4xx/5xx; (6) **judge** against intent + persona expectation using
 `monkey-refs/judging-rubric.md` (expected / nit / suspected defect — don't cry wolf, rule out
 as-designed / transient / your-mistake / env-noise); (7) on a suspected defect, record a candidate
 (persona, repro from a known state, expected vs actual, screenshot, console/network, severity, which
-oracle it violates); (8) wait per the pacing setting. Keep a state map so you explore broadly.
+oracle it violates) and **immediately fire its validator in parallel (Phase 4), then keep going**;
+(8) wait per the pacing setting. Keep a state map so you explore broadly. Don't save findings up for
+the end — validate and report each as it surfaces.
 
-## Phase 4 — Adversarial validation (try to DISPROVE)
+## Phase 4 — Adversarial validation (try to DISPROVE), in parallel
 
-No finding is reported on your say-so. For each candidate, run the validator prompt from
-`monkey-refs/adversarial-validation.md` via — best first — a **Cursor Background Agent**, a **fresh
-chat**, or an explicit **inline role-switch**. Feed it the finding + repo, NOT your reasoning; tell
-it to refute and to re-derive expected behavior from the code. Only `confirmed` findings proceed;
-log `false_positive`s with the reason; gather more evidence once for `needs_more_info`.
+No finding is reported on your say-so. **The moment you raise a candidate, validate it — don't wait
+until you've finished exploring.** Run the validator prompt from
+`monkey-refs/adversarial-validation.md` via — best first — a **Cursor Background Agent** (kick it
+off and keep testing; you can have several in flight at once), a **fresh chat**, or an explicit
+**inline role-switch**. Feed it the finding + repo, NOT your reasoning; tell it to refute and to
+re-derive expected behavior from the code. As each returns: `confirmed` ⇒ go straight to Phase 5 and
+report it now; `false_positive` ⇒ log with the reason; `needs_more_info` ⇒ one more evidence pass.
+(Inline role-switch can't truly parallelize — if that's all you have, still validate each finding
+right after raising it, never in one end-of-run batch.)
 
-## Phase 5 — Report
+## Phase 5 — Report (streaming, deduped)
 
-Send confirmed findings to the validated channel per `monkey-refs/reporting.md`: criticals
-immediately, the rest as an end-of-run digest. Close with a run summary — cycles, personas,
-candidates → confirmed/filtered/unconfirmed, and honest coverage gaps. Never report unconfirmed
-candidates as defects.
+Report each confirmed finding to the validated channel **as soon as its validator clears it** — not
+in an end-of-run batch — per `monkey-refs/reporting.md`. **Before every send, dedup against the
+channel:** read recent history (Slack `search_messages` / Telegram recent / the report file) and
+**skip if the same defect is already reported** (match on symptom + page/URL, not exact wording),
+logging it as "already reported — skipped." Criticals go out on their own immediately. Close with a
+run summary — cycles, personas, candidates → confirmed / filtered / skipped-as-duplicate /
+unconfirmed, and honest coverage gaps. Never report unconfirmed candidates as defects.

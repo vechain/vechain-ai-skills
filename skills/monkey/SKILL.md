@@ -17,9 +17,13 @@ as designed but in a way I didn't expect." Two things keep you honest: you groun
 in the **project's own intent** (read from its repo), and every suspected bug is challenged by a
 separate **adversarial validator** before it ever reaches the user.
 
-This skill runs in five phases. Do them in order. Don't skip the setup or the guardrails — a
-random agent loose on the wrong environment can do real damage, and an unverified finding wastes
-the user's trust.
+This skill runs in phases, but they are **not strictly sequential**. Setup, the channel test, and
+login come first, in order. After that, exploration, validation, and reporting run as a **streaming
+pipeline**: the moment you raise a suspected defect you fire its adversarial validator **in parallel**
+and, if it survives, report it to the channel **immediately**, all while exploration keeps going.
+**Do not wait until you've found every bug to validate and report; handle each finding as you go.**
+Don't skip the setup or the guardrails — a random agent loose on the wrong environment can do real
+damage, and an unverified finding wastes the user's trust.
 
 ## The golden rule: you are a tester, not a vandal
 
@@ -138,10 +142,12 @@ Loop until you hit the budget, the cycle cap, or the user stops you. Each cycle:
 6. **Judge the result** against the intent brief and the persona's expectation, using
    [references/judging-rubric.md](references/judging-rubric.md). Decide: *expected behavior*,
    *minor nit*, or *suspected defect*.
-7. **On a suspected defect, record a candidate finding** (don't report yet) with: persona, exact
-   repro steps from a known state, expected vs actual, the screenshot path, relevant console/network
-   lines, your provisional severity, and *why the repo's intent says this is wrong*. Schema in
-   `reporting.md`.
+7. **On a suspected defect, record a candidate finding** with: persona, exact repro steps from a
+   known state, expected vs actual, the screenshot path, relevant console/network lines, your
+   provisional severity, and *why the repo's intent says this is wrong* (schema in `reporting.md`) —
+   then **immediately fire its adversarial validator in parallel (Phase 4) and keep exploring while
+   it runs.** Don't batch findings for an end-of-run validation pass; validate and report each one
+   as it surfaces.
 8. **Pace:** `computer` → `wait` per the tier. Periodically log estimated tokens spent and remaining
    budget so the user can see the burn rate.
 
@@ -150,34 +156,45 @@ instead of looping on one screen, and so your repro steps start from a known sta
 
 ---
 
-## Phase 4 — Adversarial validation (the antagonist)
+## Phase 4 — Adversarial validation (the antagonist), in parallel
 
 A screenshot that "looks wrong" is often the app working as intended, a slow load, or your own
-misclick. So **no finding is reported on your say-so alone.** For each candidate finding, spawn an
-independent **adversarial validator** subagent (via the `Agent` tool; or batch them with the
-`Workflow` tool's adversarial-verify pattern when there are several). Its job is explicitly to
-**disprove** the finding.
+misclick. So **no finding is reported on your say-so alone.** The instant you raise a candidate,
+spawn an independent **adversarial validator** subagent for it (via the `Agent` tool, run in the
+**background** so you keep exploring; use the `Workflow` tool to fan several out at once). Each
+validator's job is explicitly to **disprove** its finding. Run them **concurrently**: one per
+finding, in flight while you test elsewhere, never queued up for a single pass at the end of the run.
 
-Give it the full finding, the screenshot, the intent brief, and the relevant repo paths, and ask
-it to return a structured verdict: `confirmed | false_positive | needs_more_info`, with reasoning,
-and — when it can — by re-deriving expected behavior from the code rather than trusting your claim.
-Default to skepticism: ambiguous evidence ⇒ not confirmed. Prompt template and verdict schema:
-[references/adversarial-validation.md](references/adversarial-validation.md).
+Give each one the full finding, the screenshot, the intent brief, and the relevant repo paths, and
+ask it to return a structured verdict: `confirmed | false_positive | needs_more_info`, with
+reasoning, and — when it can — by re-deriving expected behavior from the code rather than trusting
+your claim. Default to skepticism: ambiguous evidence ⇒ not confirmed. Prompt template and verdict
+schema: [references/adversarial-validation.md](references/adversarial-validation.md).
 
-Only findings the validator marks **confirmed** proceed to the report. Log the rejected ones
-(with the validator's reason) so the user can audit what was filtered and why.
+As each validator returns: a **confirmed** finding goes **straight to Phase 5 and is reported
+immediately** (don't wait for the others); a **false_positive** is logged with the validator's
+reason so the user can audit what was filtered; a **needs_more_info** gets one more evidence pass,
+then is reported or shelved as "unconfirmed."
 
 ---
 
-## Phase 5 — Report
+## Phase 5 — Report (streaming, deduped)
 
-Send the confirmed findings to the validated channel, formatted per `reporting.md` (title,
-severity, persona, repro steps, expected vs actual, screenshot, console/network evidence, and the
-validator's confirmation note). Batch sensibly — a stream of one-line pings is noise; group a run's
-findings into a digest, but fire **high-severity / broken-critical-flow** issues immediately.
+Report each **confirmed** finding to the validated channel **the moment its validator clears it** —
+don't accumulate findings for an end-of-run dump. Each report carries title, severity, persona,
+repro steps, expected vs actual, screenshot, console/network evidence, and the validator's
+confirmation note (format in `reporting.md`).
 
-Close with a run summary: env tested, cycles run, personas used, tokens spent, candidates raised,
-confirmed vs filtered, and coverage gaps you'd hit next time.
+**Before sending, dedup against the channel.** The channel may already hold reports — from earlier
+runs or from earlier in this one — of the same bug. Search/read the recent channel history and
+**skip the report if the same defect is already there** (match on symptom + page/URL, not exact
+wording); log it as "already reported — skipped" instead of pinging again. Protocol in
+`reporting.md`.
+
+Streaming still respects signal-over-noise: one message per genuinely new confirmed finding,
+criticals on their own immediately. Close with a **run summary** that links the already-sent
+messages: env tested, cycles run, personas used, tokens spent, candidates raised, confirmed vs
+filtered vs skipped-as-duplicate, and coverage gaps you'd hit next time.
 
 ---
 

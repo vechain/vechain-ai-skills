@@ -10,8 +10,8 @@ is necessarily **reduced fidelity**. Here's exactly what changes and how to set 
 |---|---|---|
 | Skill packaging | `SKILL.md` auto-discovered, progressive disclosure | a **project rule** `.cursor/rules/monkey.mdc` |
 | Browser control | `Claude in Chrome` MCP (real browser, your logins) | a **browser MCP server** you configure (e.g. Playwright MCP) |
-| Adversarial validator | separate subagent via `Agent`/`Workflow`, in parallel | **manual second pass** — see below. No true parallel subagents. |
-| Reporting channel | Slack/Telegram MCP | Slack/Telegram **MCP server** or an incoming webhook |
+| Adversarial validator | separate subagent via `Agent`/`Workflow`, fired per finding in parallel | **Background Agents** can run in parallel; fresh-chat / inline can't — so validate each finding the moment you raise it, never in one end-of-run batch |
+| Reporting | stream each confirmed finding as validation clears it; dedup against the channel first | same model — Slack/Telegram **MCP server** or a webhook; dedup by reading recent channel history before each send |
 | Token/min pacing | budget introspection + pacing | pacing only; even less budget visibility — set a hard cycle cap |
 
 The biggest honest gap is the **antagonist**. In Claude Code it's an independent agent that never
@@ -27,7 +27,10 @@ so you have three options, best first:
    validator, job is to DISPROVE," and re-derive expected behavior from the code. Use only if 1–2
    aren't available; it's the most prone to confirmation bias.
 
-Whichever you use, **only confirmed findings get reported** — the rule below enforces that.
+Whichever you use, **only confirmed findings get reported** — the rule below enforces that. Validate
+**as you go**: fire a finding's validator the instant you raise it (Background Agents let several run
+at once) and report each one as soon as it clears, rather than batching at the end. And **dedup
+before every send** — read the channel's recent history and skip anything already reported there.
 
 ## Setup
 

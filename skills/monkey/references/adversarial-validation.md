@@ -5,14 +5,23 @@ to see a bug, possibly after a misclick or a slow load. So before anything reach
 **separate agent that did not see you find it** tries to **tear it down**. Only survivors get
 reported. This is what keeps the report signal-rich and the user's trust intact.
 
-## How to run it
+## How to run it — fire on raise, in parallel, report on return
 
-- **One finding:** spawn a single validator with the `Agent` tool.
-- **Several findings:** use the `Workflow` tool's adversarial-verify pattern to validate them in
-  parallel (one validator per finding), optionally with a small panel (e.g., 2–3 validators) per
-  finding for high-severity ones, taking the majority verdict.
+Validation is **not** an end-of-run phase. The moment exploration raises a candidate, kick off its
+validator and **keep exploring while it runs**:
 
-Give the validator everything it needs to judge **cold**: the finding, the screenshot path, the
+- **Each finding → its own validator, immediately.** Spawn it with the `Agent` tool in the
+  **background** so the exploration loop never blocks on it.
+- **Run them concurrently.** Multiple validators in flight at once is the expected state — use the
+  `Workflow` tool's adversarial-verify pattern to fan several out when candidates pile up. Never
+  collect findings and validate them in a single batch at the end of the run.
+- **High-severity findings** get a small panel (2–3 validators), requiring a majority `confirmed` —
+  a false "critical" is the most damaging false positive.
+- **Route each verdict the instant it returns:** `confirmed` ⇒ dedup-check the channel and report
+  now (don't wait for the others); `false_positive` ⇒ log with the reason and drop;
+  `needs_more_info` ⇒ one more evidence pass, then resolve.
+
+Give each validator everything it needs to judge **cold**: the finding, the screenshot path, the
 intent brief, and the relevant repo paths. Crucially, frame its job as *disproving*, and tell it to
 prefer re-deriving expected behavior from the **code** over trusting your narrative.
 

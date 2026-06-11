@@ -22,8 +22,10 @@ This is a delivery test — no action needed. Confirmed findings will arrive her
 ```
 
 Then verify it landed (ask the user to confirm, or check the send result). **If it fails, stop and
-fix the channel** — do not run a test whose output can't be delivered. Ask the user how they want
-delivery if it's ambiguous (a single digest at the end vs. live criticals + end digest).
+fix the channel** — do not run a test whose output can't be delivered. Default delivery is
+**streaming**: each confirmed finding is sent as it clears validation (deduped against the channel
+first), with a summary at the end. Confirm this with the user if they seem to expect a single
+end-of-run digest instead.
 
 ## Candidate finding schema (internal, pre-validation)
 
@@ -48,14 +50,37 @@ Keep candidates in this shape so the validator and the report can both consume t
 }
 ```
 
-## Reporting cadence — signal over noise
+## Reporting cadence — stream each confirmed finding, deduped
 
-- **Critical / broken critical flow:** send immediately, on its own, as soon as the validator
-  confirms. Don't make the user wait through a digest for a showstopper.
-- **High / medium / low:** batch into a **digest** (end of run, or at sensible checkpoints for long
-  runs). A stream of one-line pings trains the user to ignore the channel.
+- **Report as you go.** The moment a finding's validator returns `confirmed`, report it — don't
+  hold it for an end-of-run batch. Validation runs in parallel, one per finding (see
+  `adversarial-validation.md`), so confirmed reports naturally trickle out during the run.
+- **Dedup first (see below).** Before every send, check the channel for an existing report of the
+  same defect and skip if it's already there.
+- **Criticals stand alone, immediately.** A broken critical flow goes out on its own the instant
+  it's confirmed.
+- **One message per genuinely new finding.** Streaming is not a firehose: still collapse the same
+  defect seen on multiple pages into a single report, and prefer substance over one-liner pings.
 - **Never send unconfirmed candidates** as defects. They belong only in the run summary's
   "unconfirmed / needs human eyes" list.
+
+## Deduplicate against the channel (before every send)
+
+The channel is shared and long-lived: it may already carry a report of the same bug from a previous
+run, from a teammate, or from earlier in this run. Reporting it again is noise that erodes trust, so
+**every send is gated on a dedup check:**
+
+1. **Read recent channel history** for the same defect — Slack: `search_messages` or read the
+   channel; Telegram: read recent messages; file/webhook: scan the existing report file. Search by
+   the symptom and the page/URL, not your exact wording (e.g. "undefined in search empty state",
+   "agent detail title", "double-submit checkout").
+2. **Match on substance, not phrasing.** Same defect + same page/flow ⇒ duplicate, even if the
+   severity, persona, or steps differ.
+3. **If a match exists, skip the send.** Log it in your run as "already reported — skipped (link)";
+   at most react to / ▲ the existing message if the channel supports it, rather than reposting.
+4. **If it's a recurrence of something marked fixed/closed,** reply *in that message's thread*
+   ("still reproduces as of `<date>`") instead of opening a new top-level report.
+5. **When unsure, err toward not pinging twice** — one consolidated note beats a duplicate.
 
 ## Confirmed-finding message format
 
@@ -85,9 +110,10 @@ Always close with a digest the user can scan:
 ```
 🐒 Monkey run complete — <URL> (<env>)
 Cycles: <n> · Personas: <list> · Tokens spent: ~<n> / budget <n>
-Candidates raised: <n> → Confirmed: <n> · Filtered (false positive): <n> · Unconfirmed: <n>
+Candidates: <n> → Confirmed: <n> · Filtered (false positive): <n> · Skipped (already reported): <n> · Unconfirmed: <n>
 
-Confirmed findings: <list with severities, linking to the messages above>
+Confirmed findings: <list with severities, linking to the messages sent during the run>
+Skipped as duplicate: <one line each: finding + link to the existing channel report>
 Filtered (audit): <one line each: finding + why the validator rejected it>
 Unconfirmed (needs human eyes): <list>
 Coverage gaps / what I'd hit next: <areas not reached, flows blocked by auth/destructive walls>
