@@ -129,6 +129,14 @@
         "repo": "vechain/vechain-ai-skills"
       },
       "description": "Secure GitHub Actions workflows — full SHA pinning for `uses:`, safe `pull_request` handling, least-privilege permissions, Dependabot updates, and shell-injection-safe `run:` steps"
+    },
+    {
+      "name": "monkey",
+      "source": {
+        "source": "github",
+        "repo": "vechain/vechain-ai-skills"
+      },
+      "description": "Autonomous monkey / chaos testing of a live web app — persona-driven random browser actions, per-step screenshot judging against repo intent, adversarial validation of suspected bugs, and reporting only confirmed findings to Slack/Telegram"
     }
   ]
 }

@@ -1,0 +1,85 @@
+---
+description: >-
+  Monkey / chaos / exploratory testing of a live web app. Drive a browser through random,
+  persona-driven actions, screenshot each step, judge results against the repo's intent, have a
+  separate pass try to DISPROVE each suspected bug, and report only confirmed findings to the
+  chosen channel. Use for monkey-testing, chaos-testing, fuzzing, smoke-testing, or "let an agent
+  loose on this site and tell me what's broken."
+globs:
+alwaysApply: false
+---
+
+# Monkey — chaos testing (Cursor port)
+
+Operate this web app like a horde of unpredictable real users, then surface **only the bugs you
+can prove**. Ground every judgment in the project's intent (this repo) and have a separate pass
+challenge every finding before reporting. Full detail lives in `.cursor/monkey-refs/` — read those
+files as needed; they are the same references the Claude Code skill uses.
+
+## Hard stops (never skip — see monkey-refs/safety-and-scope.md)
+
+You are a tester, not a vandal. Before ANY action, reject it if it is destructive or irreversible:
+never click delete/remove/reset, never pay/buy/transfer/subscribe, never enter real credentials or
+real personal/financial data, never send messages on someone's behalf, never change account/
+security/permission settings, never accept terms or grant OAuth, never solve CAPTCHAs, never leave
+the target origin or touch user-declared no-go zones. **Classify the environment first** — on
+production, behave read-only (navigate/scroll/read only). Unknown env ⇒ treat as production. If a
+flow needs a forbidden action to continue, note the barrier and explore elsewhere. When in doubt,
+don't click.
+
+## Phase 0 — Setup interview (one round)
+
+Ask for: target **URL** + **environment** (prod/staging/dev); **repo** for context (this project,
+usually); **intensity** → translate to a hard **cycle cap** + fixed wait between cycles (Cursor
+gives little token-budget visibility, so cap by cycles); **report channel**; **login** approach
+(default: user logs in manually in the browser MCP window); **notes / focus / no-go zones**.
+Then read the repo and write an **intent brief**: purpose, users, critical flows, what "correct"
+looks like. That brief is your test oracle.
+
+## Phase 1 — Validate the channel FIRST
+
+Send a test message to the chosen channel (Slack/Telegram MCP, or a webhook, or write a report
+file). Confirm it's delivered before testing. If it fails, fix it first. Templates in
+`monkey-refs/reporting.md`.
+
+## Phase 2 — Open the site & login
+
+Use your configured **browser MCP** (e.g. Playwright MCP): open a context, navigate to the URL,
+screenshot, read the page. On an auth wall, **hand control to the user** — describe what you see,
+ask them to log in in the MCP browser window, wait for "done," re-screenshot. Never type
+credentials. Note: the MCP browser may not share your existing logins (see cursor/README.md).
+
+## Phase 3 — Exploration loop (until the cycle cap)
+
+Per cycle: (1) adopt a **persona** from `monkey-refs/personas.md`, rotating for coverage; (2)
+enumerate actionable elements; (3) choose a plausible-but-varied action for that persona — **run it
+through the hard stops first**; (4) act, then **screenshot**; (5) read **console + network** for
+errors/4xx/5xx; (6) **judge** against intent + persona expectation using
+`monkey-refs/judging-rubric.md` (expected / nit / suspected defect — don't cry wolf, rule out
+as-designed / transient / your-mistake / env-noise); (7) on a suspected defect, record a candidate
+(persona, repro from a known state, expected vs actual, screenshot, console/network, severity, which
+oracle it violates) and **immediately fire its validator in parallel (Phase 4), then keep going**;
+(8) wait per the pacing setting. Keep a state map so you explore broadly. Don't save findings up for
+the end — validate and report each as it surfaces.
+
+## Phase 4 — Adversarial validation (try to DISPROVE), in parallel
+
+No finding is reported on your say-so. **The moment you raise a candidate, validate it — don't wait
+until you've finished exploring.** Run the validator prompt from
+`monkey-refs/adversarial-validation.md` via — best first — a **Cursor Background Agent** (kick it
+off and keep testing; you can have several in flight at once), a **fresh chat**, or an explicit
+**inline role-switch**. Feed it the finding + repo, NOT your reasoning; tell it to refute and to
+re-derive expected behavior from the code. As each returns: `confirmed` ⇒ go straight to Phase 5 and
+report it now; `false_positive` ⇒ log with the reason; `needs_more_info` ⇒ one more evidence pass.
+(Inline role-switch can't truly parallelize — if that's all you have, still validate each finding
+right after raising it, never in one end-of-run batch.)
+
+## Phase 5 — Report (streaming, deduped)
+
+Report each confirmed finding to the validated channel **as soon as its validator clears it** — not
+in an end-of-run batch — per `monkey-refs/reporting.md`. **Before every send, dedup against the
+channel:** read recent history (Slack `search_messages` / Telegram recent / the report file) and
+**skip if the same defect is already reported** (match on symptom + page/URL, not exact wording),
+logging it as "already reported — skipped." Criticals go out on their own immediately. Close with a
+run summary — cycles, personas, candidates → confirmed / filtered / skipped-as-duplicate /
+unconfirmed, and honest coverage gaps. Never report unconfirmed candidates as defects.
