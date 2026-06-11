@@ -1,0 +1,30 @@
+{
+  "_comment": "Copy to <your-repo>/.cursor/mcp.json and keep only the servers you use. A browser server is REQUIRED; Slack/Telegram are optional (the rule can fall back to a report file + webhook). Do NOT commit real tokens — use env vars or Cursor's secret storage.",
+
+  "mcpServers": {
+    "playwright": {
+      "_comment": "Browser control. Drives its own browser context — your existing logins may NOT carry over; pre-authenticate a storage state or do the manual-login handoff in its window.",
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
+    },
+
+    "slack": {
+      "_comment": "Optional. Use a Slack MCP server of your choice; provide a bot token with chat:write scope via env. Replace with your server's actual command/args.",
+      "command": "npx",
+      "args": ["-y", "<your-slack-mcp-server>"],
+      "env": {
+        "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}"
+      }
+    },
+
+    "telegram": {
+      "_comment": "Optional. A Telegram MCP server, or skip MCP entirely and post via the Bot API webhook from the rule. Provide bot token + chat id via env.",
+      "command": "npx",
+      "args": ["-y", "<your-telegram-mcp-server>"],
+      "env": {
+        "TELEGRAM_BOT_TOKEN": "${TELEGRAM_BOT_TOKEN}",
+        "TELEGRAM_CHAT_ID": "${TELEGRAM_CHAT_ID}"
+      }
+    }
+  }
+}
