@@ -32,10 +32,10 @@ npx skills add vechain/vechain-ai-skills
 
 ```bash
 # Cursor Marketplace
-/add-plugin vechain-ai
+/add-plugin vechain
 
 # Local testing (from a clone of this repo)
-ln -s "$PWD" ~/.cursor/plugins/local/vechain-ai
+ln -s "$PWD" ~/.cursor/plugins/local/vechain
 ```
 
 The Cursor plugin bundles the VeChain-specific skills only (generic skills such as

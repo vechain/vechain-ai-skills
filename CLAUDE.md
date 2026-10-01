@@ -24,7 +24,7 @@ Four channels — all must stay in sync:
 1. **Claude Code marketplace**: `.claude-plugin/marketplace.json` + `.claude-plugin/plugin.json`
 2. **Skills CLI**: `SKILL.md` files are auto-discovered by `npx skills add`
 3. **Local install**: `scripts/install-local.sh` copies skills to `~/.claude/skills/`
-4. **Cursor marketplace**: `.cursor-plugin/plugin.json` — single plugin listing only VeChain-specific skills. `name` and `version` must match `.claude-plugin/plugin.json` (enforced by `npm run validate`)
+4. **Cursor marketplace**: `.cursor-plugin/plugin.json` — single plugin named `vechain` (Claude uses `vechain-ai`) listing only VeChain-specific skills. `version` must match `.claude-plugin/plugin.json` (enforced by `npm run validate`)
 
 ## Skill Conventions
 

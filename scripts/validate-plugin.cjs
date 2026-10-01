@@ -199,7 +199,7 @@ function validateCursorPlugin(abs, claudePluginJsonPath, errors) {
   // Keep in sync with the Claude Code manifest
   if (fs.existsSync(claudePluginJsonPath)) {
     const claudeJson = JSON.parse(fs.readFileSync(claudePluginJsonPath, 'utf-8'));
-    for (const key of ['name', 'version']) {
+    for (const key of ['version']) {
       if (claudeJson[key] !== cursorJson[key]) {
         errors.push(
           `${label}: "${key}" (${cursorJson[key]}) does not match .claude-plugin/plugin.json (${claudeJson[key]})`,

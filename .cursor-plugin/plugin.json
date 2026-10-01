@@ -1,6 +1,6 @@
 {
-  "name": "vechain-ai",
-  "displayName": "VeChain AI",
+  "name": "vechain",
+  "displayName": "VeChain",
   "version": "0.3.0",
   "description": "VeChain AI skill collection — vechain-core, vechain-kit, frontend, smart-contract-development, vebetterdao, stargate, thor, indexer-core, navigators, and more (13 skills)",
   "author": {
