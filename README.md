@@ -28,6 +28,19 @@ npx skills add vechain/vechain-ai-skills
 # Update frequently to always have up to date skills
 ```
 
+### Cursor
+
+```bash
+# Cursor Marketplace
+/add-plugin vechain-ai
+
+# Local testing (from a clone of this repo)
+ln -s "$PWD" ~/.cursor/plugins/local/vechain-ai
+```
+
+The Cursor plugin bundles the VeChain-specific skills only (generic skills such as
+`grill-me`, `translate`, and `secure-github-actions` are available via Claude Code and the Skills CLI).
+
 ## Skills
 
 ### vechain-dev

@@ -18,6 +18,10 @@ npm run lint-markdown          # Lint markdown files
 .claude-plugin/
   marketplace.json                # Plugin marketplace catalog
   plugin.json                     # Plugin manifest (name, version, skills)
+.cursor-plugin/
+  plugin.json                     # Cursor plugin manifest (VeChain skills subset)
+assets/
+  logo.png                        # Plugin logo (Cursor marketplace)
 skills/
   vechain-dev/                    # SKILL.md + references/ (15 files)
 scripts/                          # Validation and install scripts
@@ -38,13 +42,14 @@ The skills encode these opinionated defaults:
 
 ## Distribution Channels
 
-This repo supports three install methods. All must stay in sync:
+This repo supports four install methods. All must stay in sync:
 
 | Channel | Command | What it does |
 |---------|---------|-------------|
 | **Plugin marketplace** | `/plugin marketplace add vechain/vechain-ai-skills` | Claude Code reads `.claude-plugin/marketplace.json`, then `/plugin install <name>` |
 | **Skills CLI** | `npx skills add vechain/vechain-ai-skills` | Agent-agnostic CLI finds `SKILL.md` files |
 | **Local install** | `./scripts/install-local.sh` | Copies skills to `~/.claude/skills/` for development |
+| **Cursor marketplace** | `/add-plugin vechain-ai` | Cursor reads `.cursor-plugin/plugin.json` (VeChain-specific skills only) |
 
 ## Adding a New Skill
 
@@ -103,7 +108,10 @@ This repo supports three install methods. All must stay in sync:
     ]
     ```
 
-6. Validate:
+6. If the skill is VeChain-specific, also register it in `.cursor-plugin/plugin.json` `skills`
+   (generic skills like `grill-me` or `translate` are intentionally excluded from Cursor).
+
+7. Validate:
 
     ```bash
     npm run validate
@@ -175,6 +183,7 @@ Then start a new Claude Code session to pick up the changes. Repeat until the sk
 |------|---------|
 | `.claude-plugin/marketplace.json` | Root catalog — lists installable plugins |
 | `.claude-plugin/plugin.json` | Plugin manifest — name, version, skills list |
+| `.cursor-plugin/plugin.json` | Cursor plugin manifest — `name`/`version` must match `.claude-plugin/plugin.json` |
 | `skills/*/SKILL.md` | Skill content with YAML frontmatter |
 | `skills/*/references/*.md` | Supplementary reference docs loaded on demand |
 | `scripts/validate-plugin.cjs` | Validates structure, frontmatter, and plugin.json consistency |
@@ -193,6 +202,7 @@ Then start a new Claude Code session to pick up the changes. Repeat until the sk
 - [ ] `npm run lint-markdown` passes
 - [ ] New skills are registered in `.claude-plugin/plugin.json`
 - [ ] New skills are registered in `.claude-plugin/marketplace.json`
+- [ ] VeChain-specific skills are registered in `.cursor-plugin/plugin.json`
 - [ ] Cross-references between files use correct relative paths
 
 ## Content Sources

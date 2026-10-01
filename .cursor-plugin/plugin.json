@@ -1,0 +1,48 @@
+{
+  "name": "vechain-ai",
+  "displayName": "VeChain AI",
+  "version": "0.3.0",
+  "description": "VeChain AI skill collection — vechain-core, vechain-kit, frontend, smart-contract-development, vebetterdao, stargate, thor, indexer-core, navigators, and more (13 skills)",
+  "author": {
+    "name": "VeChain",
+    "email": "developers@vechain.org"
+  },
+  "homepage": "https://github.com/vechain/vechain-ai-skills",
+  "repository": "https://github.com/vechain/vechain-ai-skills",
+  "license": "MIT",
+  "logo": "assets/logo.png",
+  "keywords": [
+    "vechain",
+    "blockchain",
+    "dapp",
+    "solidity",
+    "hardhat",
+    "vechain-kit",
+    "fee-delegation",
+    "vebetterdao",
+    "stargate",
+    "smart-contracts"
+  ],
+  "category": "developer-tools",
+  "tags": [
+    "blockchain",
+    "vechain",
+    "web3",
+    "smart-contracts"
+  ],
+  "skills": [
+    "./skills/vechain-core",
+    "./skills/vechain-kit",
+    "./skills/frontend",
+    "./skills/smart-contract-development",
+    "./skills/vebetterdao",
+    "./skills/stargate",
+    "./skills/auto-voting-relayers",
+    "./skills/create-vechain-dapp",
+    "./skills/vechain-react-native-dev",
+    "./skills/indexer-core",
+    "./skills/x-2-earn-apps",
+    "./skills/vebetterdao-navigators",
+    "./skills/thor"
+  ]
+}
