@@ -6,6 +6,10 @@
 .claude-plugin/
   marketplace.json            # Plugin marketplace catalog
   plugin.json                 # Plugin manifest (name, version, skills)
+.cursor-plugin/
+  plugin.json                 # Cursor plugin manifest (VeChain skills subset)
+assets/
+  logo.png                    # Plugin logo (Cursor marketplace)
 skills/                       # One directory per skill
   vechain-dev/
     SKILL.md                  # Skill content with YAML frontmatter
@@ -15,11 +19,12 @@ scripts/                      # Validation and install scripts
 
 ## Distribution
 
-Three channels — all must stay in sync:
+Four channels — all must stay in sync:
 
 1. **Claude Code marketplace**: `.claude-plugin/marketplace.json` + `.claude-plugin/plugin.json`
 2. **Skills CLI**: `SKILL.md` files are auto-discovered by `npx skills add`
 3. **Local install**: `scripts/install-local.sh` copies skills to `~/.claude/skills/`
+4. **Cursor marketplace**: `.cursor-plugin/plugin.json` — single plugin listing only VeChain-specific skills. `name` and `version` must match `.claude-plugin/plugin.json` (enforced by `npm run validate`)
 
 ## Skill Conventions
 
@@ -49,7 +54,8 @@ metadata:
 3. Optionally add `references/` directory for supplementary files
 4. Register in `.claude-plugin/plugin.json` skills array (path must match directory)
 5. Register in `.claude-plugin/marketplace.json` plugins array (required for `/plugin install` to find the skill)
-6. Run `npm run validate` to verify structure
+6. If the skill is VeChain-specific, register it in `.cursor-plugin/plugin.json` skills array (generic skills like `grill-me`, `translate`, `secure-github-actions` are excluded from Cursor)
+7. Run `npm run validate` to verify structure
 
 **IMPORTANT:** A skill MUST be added to BOTH `plugin.json` AND `marketplace.json`. Missing `marketplace.json` means `/plugin install <name>` will return "not found".
 

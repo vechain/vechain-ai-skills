@@ -152,7 +152,61 @@ function validate(rootDir) {
     }
   }
 
+  validateCursorPlugin(abs, pluginJsonPath, errors);
+
   return errors;
+}
+
+/**
+ * Validate .cursor-plugin/plugin.json (Cursor marketplace manifest).
+ * Lists a subset of skills, so only checks that referenced paths exist.
+ */
+function validateCursorPlugin(abs, claudePluginJsonPath, errors) {
+  const cursorJsonPath = path.join(abs, '.cursor-plugin', 'plugin.json');
+  if (!fs.existsSync(cursorJsonPath)) {
+    errors.push('missing .cursor-plugin/plugin.json');
+    return;
+  }
+
+  const cursorJson = JSON.parse(fs.readFileSync(cursorJsonPath, 'utf-8'));
+  const label = '.cursor-plugin/plugin.json';
+
+  if (!cursorJson.name || !/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/.test(cursorJson.name)) {
+    errors.push(`${label}: missing or invalid "name" (must be kebab-case)`);
+  }
+  if (!cursorJson.version) errors.push(`${label}: missing "version"`);
+
+  const isUnsafePath = (p) => path.isAbsolute(p) || p.split(/[\\/]/).includes('..');
+
+  if (cursorJson.logo && !/^https?:\/\//.test(cursorJson.logo)) {
+    if (isUnsafePath(cursorJson.logo)) {
+      errors.push(`${label}: logo path "${cursorJson.logo}" must be relative and inside the repo`);
+    } else if (!fs.existsSync(path.join(abs, cursorJson.logo))) {
+      errors.push(`${label}: logo "${cursorJson.logo}" not found`);
+    }
+  }
+
+  const skills = Array.isArray(cursorJson.skills) ? cursorJson.skills : [];
+  if (skills.length === 0) errors.push(`${label}: missing or empty "skills" array`);
+  for (const skillRef of skills) {
+    if (isUnsafePath(skillRef)) {
+      errors.push(`${label}: skill path "${skillRef}" must be relative and inside the repo`);
+    } else if (!fs.existsSync(path.join(abs, skillRef, 'SKILL.md'))) {
+      errors.push(`${label}: skill "${skillRef}" has no SKILL.md`);
+    }
+  }
+
+  // Keep in sync with the Claude Code manifest
+  if (fs.existsSync(claudePluginJsonPath)) {
+    const claudeJson = JSON.parse(fs.readFileSync(claudePluginJsonPath, 'utf-8'));
+    for (const key of ['name', 'version']) {
+      if (claudeJson[key] !== cursorJson[key]) {
+        errors.push(
+          `${label}: "${key}" (${cursorJson[key]}) does not match .claude-plugin/plugin.json (${claudeJson[key]})`,
+        );
+      }
+    }
+  }
 }
 
 // Main — validate from repo root (script location is scripts/)
