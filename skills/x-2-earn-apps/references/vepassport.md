@@ -50,7 +50,7 @@ Not all checks are active. Currently only **delegation** and **Proof of Particip
 
 ### Proof of Participation
 
-Users must complete **3 sustainable actions within a 12-round (week) period** to be considered a person.
+Users must complete **4 sustainable actions within a 4-round (week) period** to be considered a person.
 
 An action = receiving a reward from an X2Earn app. Points accumulate based on the app's security level:
 

@@ -48,7 +48,7 @@ Relayer Dashboard (monitoring/analytics)
 
 ### For Users (Auto-Voting)
 
-1. Hold 1+ VOT3, complete 3+ sustainable actions, pass VeBetterPassport
+1. Hold 1+ VOT3, complete 4+ sustainable actions, pass VeBetterPassport
 2. Choose up to 15 apps, toggle auto-voting on
 3. Takes effect next round (not current)
 4. Each week: relayer votes for you, claims your rewards to your wallet
