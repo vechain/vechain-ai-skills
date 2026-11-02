@@ -69,6 +69,18 @@ All logic in a traditional backend using `@vechain/sdk-network` to interact with
 pragma solidity ^0.8.20;
 
 interface IX2EarnRewardsPool {
+    enum NonProofRewardCategory {
+        Endorser,
+        Leaderboard,
+        Streak,
+        Cashback,
+        Referral,
+        Other
+    }
+
+    // DEPRECATED in V9 — kept for backward compatibility.
+    // Registers a passport action without a typed proof. New integrations MUST use
+    // distributeRewardWithProof (sustainable) or distributeNonProofReward (bonus).
     function distributeReward(
         bytes32 appId,
         uint256 amount,
@@ -76,6 +88,7 @@ interface IX2EarnRewardsPool {
         string memory proof
     ) external;
 
+    // V9: proofTypes / proofValues are MANDATORY (non-empty) — empty arrays revert.
     function distributeRewardWithProof(
         bytes32 appId,
         uint256 amount,
@@ -84,6 +97,16 @@ interface IX2EarnRewardsPool {
         string[] memory proofValues,
         string[] memory impactCodes,
         uint256[] memory impactValues,
+        string memory description
+    ) external;
+
+    // NEW in V9 — bonus / non-sustainable payouts.
+    // Does NOT register a passport action. Emits NonProofRewardDistributed.
+    function distributeNonProofReward(
+        bytes32 appId,
+        uint256 amount,
+        address receiver,
+        NonProofRewardCategory category,
         string memory description
     ) external;
 }
@@ -97,10 +120,7 @@ contract MyRewardDistributor {
         APP_ID = _appId;
     }
 
-    function rewardUser(address receiver, uint256 rewardAmount) external {
-        x2EarnRewardsPool.distributeReward(APP_ID, rewardAmount, receiver, "");
-    }
-
+    // V9: proof arrays are mandatory.
     function rewardUserWithProof(
         address receiver,
         uint256 rewardAmount,
@@ -114,6 +134,16 @@ contract MyRewardDistributor {
             APP_ID, rewardAmount, receiver,
             proofTypes, proofValues, impactCodes, impactValues, description
         );
+    }
+
+    // V9 bonus reward — does NOT register a passport action.
+    function payBonus(
+        address receiver,
+        uint256 amount,
+        IX2EarnRewardsPool.NonProofRewardCategory category,
+        string memory description
+    ) external {
+        x2EarnRewardsPool.distributeNonProofReward(APP_ID, amount, receiver, category, description);
     }
 }
 ```
@@ -146,15 +176,7 @@ const rewardsPool = thorClient.contracts.load(
     signer
 );
 
-// Distribute reward without proofs
-await rewardsPool.transact.distributeReward(
-    APP_ID,
-    ethers.parseEther("10"),  // 10 B3TR
-    receiverAddress,
-    ""
-);
-
-// Distribute reward with sustainability proofs
+// Sustainable reward — V9 requires non-empty proofTypes / proofValues
 await rewardsPool.transact.distributeRewardWithProof(
     APP_ID,
     ethers.parseEther("10"),
@@ -164,6 +186,16 @@ await rewardsPool.transact.distributeRewardWithProof(
     ["waste_mass", "carbon"],             // impact codes
     [100, 50],                            // impact values
     "Recycled 100g of plastic waste"
+);
+
+// Bonus reward (V9) — does NOT register a passport action
+// NonProofRewardCategory: 0=Endorser, 1=Leaderboard, 2=Streak, 3=Cashback, 4=Referral, 5=Other
+await rewardsPool.transact.distributeNonProofReward(
+    APP_ID,
+    ethers.parseEther("5"),
+    receiverAddress,
+    1, // Leaderboard
+    "Week 12 leaderboard - 3rd place",
 );
 ```
 
@@ -177,8 +209,17 @@ const clauses = users.map(user => ({
     value: '0x0',
     data: ABIContract.encodeFunctionInput(
         x2EarnRewardsPoolABI,
-        'distributeReward',
-        [APP_ID, ethers.parseEther(user.amount), user.address, ""]
+        'distributeRewardWithProof',
+        [
+            APP_ID,
+            ethers.parseEther(user.amount),
+            user.address,
+            user.proofTypes,
+            user.proofValues,
+            user.impactCodes,
+            user.impactValues,
+            user.description,
+        ]
     ),
 }));
 
@@ -195,7 +236,7 @@ const clauses = users.map(user => ({
 
 `carbon`, `water`, `energy`, `waste_mass`, `education_time`, `timber`, `plastic`, `trees_planted`, `calories_burned`, `sleep_quality_percentage`, `clean_energy_production_wh`
 
-**Mandatory rule**: At least proof OR impact must be provided when using `distributeRewardWithProof`; if neither is provided, the transaction reverts.
+**Mandatory rule (V9)**: `proofTypes` AND `proofValues` MUST be non-empty on every `distributeRewardWithProof*` entrypoint — empty arrays revert with `"X2EarnRewardsPool: proof is mandatory"`. For non-sustainable / bonus payouts (endorser, leaderboard, streak, cashback, referral, other) use `distributeNonProofReward(appId, amount, receiver, category, description)` which does NOT register a passport action and emits `NonProofRewardDistributed`.
 
 ### Distribution with Metadata
 

@@ -158,9 +158,12 @@ async function rewardUser(address: string) {
 }
 ```
 
-**Note**: the JS examples above use `distributeRewardDeprecated` (legacy JSON string format). For new apps, prefer `distributeRewardWithProof` with typed arrays — see the **vebetterdao** skill for the typed API.
+**Note**: the JS example above uses `distributeRewardDeprecated` (legacy JSON-string format) and is kept for reference only. For new apps, prefer:
 
-**Critical**: the PUBLIC ADDRESS of the wallet calling `distributeReward` must be registered as a Reward Distributor for your app via the governance dApp settings.
+- `distributeRewardWithProof` with typed arrays for **sustainable** rewards (registers a passport action; **proof arrays are mandatory in V9**). See [sustainability-proofs.md](sustainability-proofs.md) for the typed API.
+- `distributeNonProofReward(appId, amount, receiver, category, description)` for **bonus / non-sustainable** rewards (endorser, leaderboard, streak, cashback, referral, other). Added in V9 — does **not** register a passport action and emits `NonProofRewardDistributed`.
+
+**Critical**: the PUBLIC ADDRESS of the wallet calling `distributeReward*` / `distributeNonProofReward` must be registered as a Reward Distributor for your app via the governance dApp settings.
 
 ### Solidity (On-chain)
 
@@ -181,26 +184,54 @@ contract MySustainableAppContract {
         VBD_APP_ID = _appId;
     }
 
-    /// @notice Claim reward for a validated sustainable action
-    /// @dev Contract address must be registered as Reward Distributor
+    /// @notice Claim reward for a validated sustainable action.
+    /// @dev Contract address must be registered as Reward Distributor.
+    /// V9: proofTypes / proofValues are mandatory — empty arrays revert.
     function claimReward(uint256 _actionId) external {
         // ... validate action is approved and unclaimed
 
-        x2EarnRewardsPool.distributeReward(
+        string[] memory proofTypes = new string[](1);
+        proofTypes[0] = "link";
+
+        string[] memory proofValues = new string[](1);
+        proofValues[0] = actions[_actionId].proofUrl;
+
+        string[] memory impactCodes = new string[](1);
+        impactCodes[0] = "waste_mass";
+
+        uint256[] memory impactValues = new uint256[](1);
+        impactValues[0] = actions[_actionId].impact;
+
+        x2EarnRewardsPool.distributeRewardWithProof(
             VBD_APP_ID,
             actions[_actionId].rewardAmount,
             msg.sender,
-            "" // proof can be empty or JSON string
+            proofTypes,
+            proofValues,
+            impactCodes,
+            impactValues,
+            "User performed a sustainable action on my app"
         );
 
         rewardClaimed[_actionId] = true;
     }
+
+    /// @notice Pay a leaderboard prize — V9 bonus reward, no passport action.
+    function payLeaderboardPrize(address winner, uint256 amount, uint256 week) external onlyAdmin {
+        x2EarnRewardsPool.distributeNonProofReward(
+            VBD_APP_ID,
+            amount,
+            winner,
+            IX2EarnRewardsPool.NonProofRewardCategory.Leaderboard,
+            string.concat("Week ", Strings.toString(week), " leaderboard")
+        );
+    }
 }
 ```
 
-**Critical**: the contract address must be set as a **Reward Distributor** on the governance dApp before it can call `distributeReward`.
+**Critical**: the contract address must be set as a **Reward Distributor** on the governance dApp before it can call any `distribute*` entrypoint on `X2EarnRewardsPool`.
 
-**Round attribution**: if your app lets users accumulate actions and claim later, use the `ForRound` variants (`distributeRewardForRound`, `distributeRewardWithProofForRound`, `distributeRewardWithProofAndMetadataForRound`) to attribute actions to the round they were performed in. These accept an additional `actionRound` parameter (must be > 0) representing the round ID when the action happened. This prevents users from stacking actions across rounds.
+**Round attribution**: if your app lets users accumulate actions and claim later, use the `ForRound` variants (`distributeRewardWithProofForRound`, `distributeRewardWithProofAndMetadataForRound`) to attribute actions to the round they were performed in. These accept an additional `actionRound` parameter (must be > 0) representing the round ID when the action happened. This prevents users from stacking actions across rounds. `distributeNonProofReward` has **no** `ForRound` variant — bonus rewards do not register a passport action so round attribution is not applicable.
 
 ---
 

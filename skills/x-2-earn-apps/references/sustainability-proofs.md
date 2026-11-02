@@ -2,7 +2,34 @@
 
 ## When to use
 
-Use when the user asks about: sustainability proofs, impact tracking, proof types, impact codes, reward metadata, distributeRewardWithProof, distributeRewardWithProofAndMetadata, on-chain proof format.
+Use when the user asks about: sustainability proofs, impact tracking, proof types, impact codes, reward metadata, distributeRewardWithProof, distributeRewardWithProofAndMetadata, distributeNonProofReward, NonProofRewardDistributed, NonProofRewardCategory, on-chain proof format.
+
+## V9 — Sustainable vs Bonus Rewards (read first)
+
+Starting with `X2EarnRewardsPool` **V9**, the contract separates two reward flows so passport personhood reflects sustainable activity only.
+
+| Flow | Entrypoint(s) | Registers passport action? | Proof required? |
+|------|---------------|----------------------------|-----------------|
+| **Sustainable** action | `distributeRewardWithProof`, `distributeRewardWithProofAndMetadata`, `distributeRewardWithProofForRound`, `distributeRewardWithProofAndMetadataForRound` | Yes | **Yes — mandatory in V9** (empty proof arrays revert with `"X2EarnRewardsPool: proof is mandatory"`) |
+| **Bonus** / secondary reward (endorser, leaderboard, streak, cashback, referral, etc.) | `distributeNonProofReward(appId, amount, receiver, category, description)` | **No** | No (uses a typed `NonProofRewardCategory` enum instead) |
+| Legacy no-proof distribution (DEPRECATED V9) | `distributeReward(appId, amount, receiver, "")`, `distributeRewardForRound(...)`, `distributeRewardDeprecated*` | Yes (registers action without a typed proof — the V9 problem) | No |
+
+`distributeReward` is marked **deprecated** in V9 but kept for backward compatibility. New integrations MUST migrate to either `distributeRewardWithProof` (sustainable) or `distributeNonProofReward` (bonus).
+
+### NonProofRewardCategory enum (V9)
+
+The bonus-reward entrypoint takes a typed category so indexers can split payouts by intent:
+
+| Enum value | Index | Typical use |
+|------------|-------|-------------|
+| `Endorser` | 0 | Endorser payouts |
+| `Leaderboard` | 1 | Leaderboard / contest prizes |
+| `Streak` | 2 | Consecutive-day / streak bonuses |
+| `Cashback` | 3 | Cashback on purchases |
+| `Referral` | 4 | Referral payouts |
+| `Other` | 5 | Anything not covered above |
+
+The dedicated `NonProofRewardDistributed(amount, appId, receiver, category, description, distributor)` event is emitted with `appId`, `receiver`, and `category` indexed. **Indexers MUST exclude this event from passport personhood signals.**
 
 ## Proof Format (Version 2)
 
@@ -35,7 +62,7 @@ When calling `distributeRewardWithProof` on `X2EarnRewardsPool`:
 | `impactValues` | `uint256[]` | Values matching impactCodes, e.g. `[1000, 23]` |
 | `description` | `string` | Optional description of the action |
 
-**Mandatory rule**: At least proof OR impact must be provided. If neither is provided, the transaction reverts. Transaction also reverts if array lengths are mismatched or data is malformed.
+**Mandatory rule (V9)**: `proofTypes` AND `proofValues` MUST be non-empty on every `distributeRewardWithProof*` entrypoint — empty arrays revert with `"X2EarnRewardsPool: proof is mandatory"`. The legacy "at least proof OR impact" relaxation no longer applies. If your reward is a non-sustainable payout, use `distributeNonProofReward` instead. Transaction also reverts if array lengths are mismatched or data is malformed.
 
 ---
 
@@ -269,15 +296,54 @@ Deprecated impact codes: `waste_items`, `people`, `biodiversity`.
 
 ### Distribution Functions Summary
 
-| Function | Use case |
-|----------|----------|
-| `distributeReward(appId, amount, receiver, proof)` | Legacy — JSON string proof (deprecated) |
-| `distributeRewardWithProof(appId, amount, receiver, proofTypes, proofValues, impactCodes, impactValues, description)` | Standard — typed arrays for proof and impact |
-| `distributeRewardWithProofAndMetadata(appId, amount, receiver, proofTypes, proofValues, impactCodes, impactValues, description, metadata)` | Extended — adds JSON metadata for off-chain indexing |
-| `distributeRewardForRound(appId, amount, receiver, proof, actionRound)` | Basic distribution attributed to a specific round |
-| `distributeRewardWithProofForRound(..., actionRound)` | Proof distribution attributed to a specific round |
-| `distributeRewardWithProofAndMetadataForRound(..., actionRound)` | Proof + metadata distribution attributed to a specific round |
+| Function | Use case | V9 status |
+|----------|----------|-----------|
+| `distributeRewardWithProof(appId, amount, receiver, proofTypes, proofValues, impactCodes, impactValues, description)` | Standard — typed arrays for proof and impact | **Proof mandatory** (V9) — registers passport action |
+| `distributeRewardWithProofAndMetadata(appId, amount, receiver, proofTypes, proofValues, impactCodes, impactValues, description, metadata)` | Adds JSON metadata for off-chain indexing | **Proof mandatory** (V9) — registers passport action |
+| `distributeRewardWithProofForRound(..., actionRound)` | Proof distribution attributed to a specific round | **Proof mandatory** (V9) — registers passport action for the supplied round |
+| `distributeRewardWithProofAndMetadataForRound(..., actionRound)` | Proof + metadata distribution attributed to a specific round | **Proof mandatory** (V9) — registers passport action for the supplied round |
+| `distributeNonProofReward(appId, amount, receiver, category, description)` | **NEW V9** — bonus / non-sustainable payout (endorser, leaderboard, streak, cashback, referral, other) | **Does NOT register a passport action.** Emits `NonProofRewardDistributed`. |
+| `distributeReward(appId, amount, receiver, proof)` | Legacy no-proof distribution | **DEPRECATED V9** (kept for backward compatibility) |
+| `distributeRewardForRound(appId, amount, receiver, proof, actionRound)` | Legacy no-proof distribution attributed to a round | Still callable in V9 but follow the same migration as `distributeReward` |
+| `distributeRewardDeprecated(appId, amount, receiver, proof)` | Legacy JSON-string proof | Pre-existing deprecation, kept for backward compatibility |
+| `distributeRewardDeprecatedForRound(appId, amount, receiver, proof, actionRound)` | **NEW V9** — round-attribution counterpart of `distributeRewardDeprecated` | Pre-existing deprecation scheme, added for parity with `*ForRound` family |
 
 ### Round Attribution
 
-By default, actions are recorded in the current round. If your app allows users to accumulate actions and claim them later, use the `ForRound` variants to attribute actions to the round they were performed in. The `actionRound` parameter must be > 0 and represents the round ID when the action actually happened.
+By default, actions are recorded in the current round. If your app allows users to accumulate actions and claim them later, use the `ForRound` variants to attribute actions to the round they were performed in. The `actionRound` parameter must be > 0 and represents the round ID when the action actually happened. `distributeNonProofReward` has **no** `ForRound` variant because bonus rewards do not register a passport action — round attribution is not applicable.
+
+### Bonus Reward Example — `distributeNonProofReward` (V9)
+
+```typescript
+// NonProofRewardCategory matches the IX2EarnRewardsPool interface order
+const NonProofRewardCategory = {
+    Endorser: 0,
+    Leaderboard: 1,
+    Streak: 2,
+    Cashback: 3,
+    Referral: 4,
+    Other: 5,
+} as const;
+
+const tx = await rewardsPool.transact.distributeNonProofReward(
+    APP_ID,
+    amount,
+    receiverAddress,
+    NonProofRewardCategory.Leaderboard,
+    "Week 12 leaderboard - 3rd place",
+);
+
+await tx.wait();
+```
+
+```solidity
+function payLeaderboardPrize(address winner, uint256 amount, uint8 place) external onlyAdmin {
+    x2EarnRewardsPool.distributeNonProofReward(
+        VBD_APP_ID,
+        amount,
+        winner,
+        IX2EarnRewardsPool.NonProofRewardCategory.Leaderboard,
+        string.concat("Week ", Strings.toString(currentWeek), " leaderboard - place ", Strings.toString(place))
+    );
+}
+```
